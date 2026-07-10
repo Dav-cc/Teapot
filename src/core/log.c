@@ -1,13 +1,7 @@
+#include "log.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
-
-typedef enum {
-    LOG_LEVEL_DEBUG = 0,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_WARN,
-    LOG_LEVEL_ERROR
-} LLevel;
 
 LLevel log_level = LOG_LEVEL_DEBUG;
 
