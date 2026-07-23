@@ -7,32 +7,54 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
-EventLoop* create_EventLoop(AcceptHandler handler){
+EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler read, WriteHandler write){
     EventLoop* el = malloc(sizeof(EventLoop));
     if(!el){
         log_message(LOG_LEVEL_ERROR,"malloc faild : %s", strerror(errno));
         return NULL;
     }
+    el->fired = calloc(events_size, sizeof(FiredEvents));
+    if(el->fired == NULL){
+        free(el);
+        log_message(LOG_LEVEL_ERROR,"calloc faild : %s", strerror(errno));
+        return NULL;
+    }
+
+    el->ev = calloc(events_size, sizeof(Events));
+    if(el->ev == NULL){
+        free(el->fired);
+        free(el);
+        log_message(LOG_LEVEL_ERROR,"calloc faild : %s", strerror(errno));
+        return NULL;
+    }
+
+    el->setsize = events_size;
     el->handler = handler;
+    el->rhandle = read;
+    el->whandle = write;
     el->ruuning = 0;
+
     el->state.epollfd = epoll_create1(0);
     if(el->state.epollfd == -1){
         log_message(LOG_LEVEL_ERROR,"epoll create faild : %s", strerror(errno));
         free(el);
+        free(el->ev);
+        free(el->fired);
         return NULL;
     }
+
     log_message(LOG_LEVEL_INFO, "EventLoop created");
     return el;
 }
 
 int EventLoop_ProcessEvents(EventLoop* el){
     int en;
-    el->nevents = epoll_wait(el->state.epollfd, el->state.events, 1024, -1);
-    if(el->nevents == -1){
+    int nevent = epoll_wait(el->state.epollfd, el->state.events, 1024, -1);
+    if(nevent == -1){
         log_message(LOG_LEVEL_ERROR,"epoll wait returned -1 : %s", strerror(errno));
         return -1;
     }
-    en = el->nevents;
+    en = nevent;
     for(int i = 0; i < en; i++){
         int flag = 0;
         struct epoll_event *event = el->state.events+i;
@@ -42,10 +64,54 @@ int EventLoop_ProcessEvents(EventLoop* el){
         el->fired[i].flags = flag;
     }
     for(int j = 0 ; j < en; j++){
-        if(el->fired[j].flags & FD_REDABLE) el->rhandle(el->fired[j].fd, el->fired[j].flags);
-        if(el->fired[j].flags & FD_WRITABLE) el->whandle(el->fired[j].fd, el->fired[j].flags);
+        if((el->fired[j].flags & FD_REDABLE )&& el->rhandle) el->rhandle(el->fired[j].fd, el->fired[j].flags);
+        if((el->fired[j].flags & FD_WRITABLE)&& el->whandle) el->whandle(el->fired[j].fd, el->fired[j].flags);
     }
-    // implemented
+    return en;
+}
+
+int EventLoop_AddFd(EventLoop* el, int fd, int flags){
+    struct epoll_event ee = {0};
+    int op = el->ev[fd].mask == FD_NULL ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+    flags |= el->ev[fd].mask;
+    el->ev[fd].mask = flags;
+    if(flags & FD_REDABLE) ee.events |= EPOLLIN;
+    if(flags & FD_WRITABLE) ee.events |= EPOLLOUT;
+    ee.data.fd = fd;
+    int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
+    if(res == -1){
+        log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
+int EventLoop_ModFd(EventLoop* el, int fd, int flags){
+    struct epoll_event ee = {0};
+    int op = EPOLL_CTL_MOD;
+    el->ev[fd].mask = 0;
+    el->ev[fd].mask = flags;
+    if(flags & FD_REDABLE) ee.events |= EPOLLIN;
+    if(flags & FD_WRITABLE) ee.events |= EPOLLOUT;
+    ee.data.fd = fd;
+
+    int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
+    if(res == -1){
+        log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
+
+int EventLoop_DelFd(EventLoop* el, int fd){
+    int res = epoll_ctl(el->state.epollfd, EPOLL_CTL_DEL, fd, NULL);
+    if(res == -1){
+        log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
+        return -1;
+    }
+    el->ev[fd].mask = FD_NULL;
+    return 0;
 }
 
 void RunEventLoop(EventLoop* el){
@@ -56,5 +122,8 @@ void RunEventLoop(EventLoop* el){
 }
 
 void EventLoop_Distroy(EventLoop* el){
+    close(el->state.epollfd);
+    free(el->ev);
+    free(el->fired);
     free(el);
 }
