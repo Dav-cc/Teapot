@@ -3,35 +3,38 @@
 
 #include <sys/epoll.h>
 
-typedef enum Eventkind{
-    EVENT_CONNECTION,
-    EVENT_LISTENER,
-    // EVENT_SIGNAL,
-    EVENT_TIMER,
-} Eventkind;
+#define EVENTS_SIZE 1024
 
-typedef struct EventType{
-    int Eventfd;
-    Eventkind type;
-}EventType;
 
-typedef struct EventLoop{
-    int is_running;
+#define FD_REDABLE (1<<1)
+#define FD_WRITABLE (1<<2)
+
+typedef void(*AcceptHandler)(int, int);
+typedef void(*ReadHandler)(int, int);
+typedef void(*WriteHandler)(int, int);
+
+typedef struct FiredEvents {
+    int fd;
+    int flags;
+}FiredEvents;
+
+typedef struct Eventstate{
     int epollfd;
-    int event_count;
-    struct epoll_event *events;
+    struct epoll_event events[EVENTS_SIZE];
+}Eventstate;
+
+typedef struct EventLoop {
+    int ruuning;
+    int nevents;
+    AcceptHandler handler;
+    ReadHandler rhandle;
+    WriteHandler whandle;
+    Eventstate state;
+    FiredEvents fired[1024];
 }EventLoop;
 
-
-typedef struct connection{
-    int fd;
-    EventType type;
-    char *buffer_read;
-    char *buffer_write;
-    int buffer_read_size;
-    int buffer_write_size;
-}connection;
-
-
+int EventLoop_ProcessEvents(EventLoop* el);
+void RunEventLoop(EventLoop* el);
+EventLoop* create_EventLoop(AcceptHandler handler);
 
 #endif  // __EVENT_H__

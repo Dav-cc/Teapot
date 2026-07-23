@@ -2,57 +2,59 @@
 #include "event.h"
 #include <errno.h>
 #include <stdlib.h>
-#include <stdio.h>
+// #include <stdio.h>
 #include <string.h>
+#include <sys/epoll.h>
 #include <unistd.h>
 
-EventLoop *event_loop_create(int max_events) {
-    EventLoop *loop = (EventLoop *)malloc(sizeof(EventLoop));
-    if (!loop) {
-        log_message(LOG_LEVEL_ERROR, "Failed to allocate memory for EventLoop: %s", strerror(errno));
+EventLoop* create_EventLoop(AcceptHandler handler){
+    EventLoop* el = malloc(sizeof(EventLoop));
+    if(!el){
+        log_message(LOG_LEVEL_ERROR,"malloc faild : %s", strerror(errno));
         return NULL;
     }
-    loop->epollfd = epoll_create1(0);
-    if (loop->epollfd == -1) {
-        log_message(LOG_LEVEL_ERROR, "epoll_create1() failed: %s", strerror(errno));
-        free(loop);
+    el->handler = handler;
+    el->ruuning = 0;
+    el->state.epollfd = epoll_create1(0);
+    if(el->state.epollfd == -1){
+        log_message(LOG_LEVEL_ERROR,"epoll create faild : %s", strerror(errno));
+        free(el);
         return NULL;
     }
-    loop->event_count = max_events;
-    loop->events = (struct epoll_event *)malloc(sizeof(struct epoll_event) * max_events);
-    if (!loop->events) {
-        log_message(LOG_LEVEL_ERROR, "Failed to allocate memory for epoll events: %s", strerror(errno));
-        close(loop->epollfd);
-        free(loop);
-        return NULL;
-    }
-    return loop;
+    log_message(LOG_LEVEL_INFO, "EventLoop created");
+    return el;
 }
 
-int evnet_loop_add(EventLoop *loop,connection *conn) {
-    struct epoll_event ev;
-    ev.events = EPOLLIN ; 
-    ev.data.ptr = conn;
-
-    if (epoll_ctl(loop->epollfd, EPOLL_CTL_ADD, conn->fd, &ev) == -1) {
-        log_message(LOG_LEVEL_ERROR, "epoll_ctl() failed to add fd %d: %s", conn->fd, strerror(errno));
+int EventLoop_ProcessEvents(EventLoop* el){
+    int en;
+    el->nevents = epoll_wait(el->state.epollfd, el->state.events, 1024, -1);
+    if(el->nevents == -1){
+        log_message(LOG_LEVEL_ERROR,"epoll wait returned -1 : %s", strerror(errno));
         return -1;
     }
-    return 1;
+    en = el->nevents;
+    for(int i = 0; i < en; i++){
+        int flag = 0;
+        struct epoll_event *event = el->state.events+i;
+        if(event->events & EPOLLIN) flag |= FD_REDABLE;
+        if(event->events & EPOLLOUT) flag |= FD_WRITABLE;
+        el->fired[i].fd = event->data.fd;
+        el->fired[i].flags = flag;
+    }
+    for(int j = 0 ; j < en; j++){
+        if(el->fired[j].flags & FD_REDABLE) el->rhandle(el->fired[j].fd, el->fired[j].flags);
+        if(el->fired[j].flags & FD_WRITABLE) el->whandle(el->fired[j].fd, el->fired[j].flags);
+    }
+    // implemented
 }
 
-int event_loop_remove(EventLoop *loop, connection *conn) {
-    if (epoll_ctl(loop->epollfd, EPOLL_CTL_DEL, conn->fd, NULL) == -1) {
-        log_message(LOG_LEVEL_ERROR, "epoll_ctl() failed to remove fd %d: %s", conn->fd, strerror(errno));
-        return -1;
+void RunEventLoop(EventLoop* el){
+    el->ruuning = 1;
+    while(el->ruuning){
+        EventLoop_ProcessEvents(el);
     }
-    return 1;
 }
 
-void event_loop_destroy(EventLoop *loop) {
-    if (loop) {
-        close(loop->epollfd);
-        free(loop->events);
-        free(loop);
-    }
+void EventLoop_Distroy(EventLoop* el){
+    free(el);
 }
