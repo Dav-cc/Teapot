@@ -11,6 +11,14 @@
 
 #define BACKLOG 120
 
+int setsock_nonblocking(int sockfd, int nonblocking){
+    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &nonblocking, sizeof(nonblocking)) < 0){
+        log_message(LOG_LEVEL_ERROR, "setsockopt() failed : %s", strerror(errno));
+        close(sockfd);
+        return -1;
+    }
+    return 0;
+}
 
 int init_listen_socket(int port) {
     int yes =1;
@@ -41,12 +49,9 @@ int init_listen_socket(int port) {
         return -1;
     }
 
-    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0){
-        log_message(LOG_LEVEL_ERROR, "setsockopt() failed : %s", strerror(errno));
-        close(sockfd);
-        return -1;
-    }
-
     log_message(LOG_LEVEL_INFO, "Listening on port %d", port);
     return sockfd;
 }
+
+
+
