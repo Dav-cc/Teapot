@@ -49,7 +49,7 @@ EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler 
 
 int EventLoop_ProcessEvents(EventLoop* el){
     int en;
-    int nevent = epoll_wait(el->state.epollfd, el->state.events, 1024, -1);
+    int nevent = epoll_wait(el->state.epollfd, el->state.events, el->setsize, -1);
     if(nevent == -1){
         log_message(LOG_LEVEL_ERROR,"epoll wait returned -1 : %s", strerror(errno));
         return -1;

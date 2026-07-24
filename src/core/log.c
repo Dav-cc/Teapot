@@ -1,7 +1,4 @@
 #include "log.h"
-#include <stdio.h>
-#include <stdarg.h>
-#include <time.h>
 
 LLevel log_level = LOG_LEVEL_DEBUG;
 
