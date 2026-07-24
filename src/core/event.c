@@ -1,6 +1,7 @@
 #include "log.h"
 #include "event.h"
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 // #include <stdio.h>
 #include <string.h>
@@ -8,7 +9,7 @@
 #include <unistd.h>
 
 EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler read, WriteHandler write){
-    EventLoop* el = malloc(sizeof(EventLoop));
+    EventLoop* el = calloc(1,sizeof(EventLoop));
     if(!el){
         log_message(LOG_LEVEL_ERROR,"malloc faild : %s", strerror(errno));
         return NULL;
@@ -37,9 +38,9 @@ EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler 
     el->state.epollfd = epoll_create1(0);
     if(el->state.epollfd == -1){
         log_message(LOG_LEVEL_ERROR,"epoll create faild : %s", strerror(errno));
-        free(el);
         free(el->ev);
         free(el->fired);
+        free(el);
         return NULL;
     }
 
@@ -64,7 +65,8 @@ int EventLoop_ProcessEvents(EventLoop* el){
         el->fired[i].flags = flag;
     }
     for(int j = 0 ; j < en; j++){
-        if((el->fired[j].flags & FD_REDABLE )&& el->rhandle) el->rhandle(el->fired[j].fd, el->fired[j].flags);
+        printf("im here . . . .\n");
+        if((el->fired[j].flags & FD_REDABLE )&& el->rhandle) el->handler(el->fired[j].fd, el->fired[j].flags);
         if((el->fired[j].flags & FD_WRITABLE)&& el->whandle) el->whandle(el->fired[j].fd, el->fired[j].flags);
     }
     return en;
@@ -116,14 +118,16 @@ int EventLoop_DelFd(EventLoop* el, int fd){
 
 void RunEventLoop(EventLoop* el){
     el->ruuning = 1;
+    log_message(LOG_LEVEL_INFO, "entring event loop . . . ");
     while(el->ruuning){
         EventLoop_ProcessEvents(el);
     }
 }
 
 void EventLoop_Distroy(EventLoop* el){
-    close(el->state.epollfd);
+    if (!el->ev || !el->fired){
     free(el->ev);
     free(el->fired);
     free(el);
+    }
 }

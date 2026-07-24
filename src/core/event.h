@@ -6,9 +6,9 @@
 #define EVENTS_SIZE 1024
 
 
-#define FD_REDABLE (1<<1)
-#define FD_WRITABLE (1<<2)
-#define FD_NULL (1<<3) // not registerd events
+#define FD_REDABLE     2
+#define FD_WRITABLE    1
+#define FD_NULL        0 // not registerd events
 
 typedef void(*AcceptHandler)(int, int);
 typedef void(*ReadHandler)(int, int);

@@ -53,6 +53,7 @@ void accept_handler(int fd, int flags)
 
         close(clientfd);
     }
+
 }
 
 void read_handler(int fd, int flags)
@@ -80,7 +81,6 @@ int init_tcp_server(int port)
         return -1;
 
     g_listenfd = init_listen_socket(port);
-
     if(g_listenfd == -1)
         return -1;
 
