@@ -11,14 +11,24 @@
 
 #define BACKLOG 120
 
-int setsock_nonblocking(int sockfd, int nonblocking){
-    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &nonblocking, sizeof(nonblocking)) < 0){
-        log_message(LOG_LEVEL_ERROR, "setsockopt() failed : %s", strerror(errno));
-        close(sockfd);
+int sock_set_nonblocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        log_message(LOG_LEVEL_ERROR, "error in fnctl() :%s", strerror(errno));
         return -1;
     }
-    return 0;
+    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
+
+int sock_set_nodelay(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        log_message(LOG_LEVEL_ERROR, "error in fnctl() :%s", strerror(errno));
+        return -1;
+    }
+    return fcntl(fd, F_SETFL, flags | O_NDELAY);
+}
+
 
 int init_listen_socket(int port) {
     int yes =1;
@@ -48,7 +58,7 @@ int init_listen_socket(int port) {
         close(sockfd);
         return -1;
     }
-
+    sock_set_nonblocking(sockfd);
     log_message(LOG_LEVEL_INFO, "Listening on port %d", port);
     return sockfd;
 }
