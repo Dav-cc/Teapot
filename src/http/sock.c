@@ -2,11 +2,11 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <stdlib.h>
 
 
 #define BACKLOG 120
@@ -20,13 +20,21 @@ int sock_set_nonblocking(int fd) {
     return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
-int sock_set_nodelay(int fd) {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1) {
-        log_message(LOG_LEVEL_ERROR, "error in fnctl() :%s", strerror(errno));
+int sock_set_reuseaddr(int fd) {
+    int yes = 1;
+    if (setsockopt(fd, SOL_SOCKET,SO_REUSEADDR, &yes,sizeof(yes)) == -1) {
+        log_message(LOG_LEVEL_ERROR, "error in sockopt() :%s", strerror(errno));
         return -1;
     }
-    return fcntl(fd, F_SETFL, flags | O_NDELAY);
+    return 1;
+}
+int sock_set_nodelay(int fd) {
+    int yes = 1;
+    if (setsockopt(fd, IPPROTO_TCP,TCP_NODELAY, &yes,sizeof(yes)) == -1) {
+        log_message(LOG_LEVEL_ERROR, "error in sockopt() :%s", strerror(errno));
+        return -1;
+    }
+    return 1;
 }
 
 

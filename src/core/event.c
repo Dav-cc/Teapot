@@ -65,7 +65,6 @@ int EventLoop_ProcessEvents(EventLoop* el){
         el->fired[i].flags = flag;
     }
     for(int j = 0 ; j < en; j++){
-        printf("im here . . . .\n");
         if((el->fired[j].flags & FD_REDABLE )&& el->rhandle) el->handler(el->fired[j].fd, el->fired[j].flags);
         if((el->fired[j].flags & FD_WRITABLE)&& el->whandle) el->whandle(el->fired[j].fd, el->fired[j].flags);
     }
