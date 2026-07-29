@@ -14,15 +14,17 @@
 typedef struct FileEvent{
     int fd;
     int mask;
-    // WriteHandler write_handler;
-    // ReadHandler read_handler;
-    acceptor acc;
+    request_handler accept_func;
+    request_handler write_func;
+    request_handler read_func;
 }FileEvent;
 
 typedef struct FiredEvent {
     int fd;
     int flags;
-    acceptor acc;
+    request_handler accept_func;
+    request_handler write_func;
+    request_handler read_func;
 }FiredEvent;
 
 typedef struct Eventstate{
@@ -34,7 +36,6 @@ typedef struct EventLoop {
     int running;
     int nevents;
     int setsize;
-    // funhandlers hdl;
     Eventstate state;
     FiredEvent* fired;
     FileEvent* ev;
@@ -46,7 +47,7 @@ EventLoop* create_EventLoop(int events_size);
 int EventLoop_DelEvent(EventLoop* el, int fd);
 int EventLoop_ModEvent(EventLoop* el, int fd, int flags);
 // int EventLoop_AddEvent(EventLoop* el, int fd, int flags, ReadHandler reader, WriteHandler writer, void* client_data);
-int EventLoop_AddEvent(EventLoop* el, int fd, int flags, acceptor accept_func );
+int EventLoop_AddEvent(EventLoop* el, int fd, int flags,request_handler write_func, request_handler read_func,request_handler accept_func );
 void EventLoop_Destroy(EventLoop* el);
 
 #endif  // __EVENT_H__

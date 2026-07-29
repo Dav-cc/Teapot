@@ -68,18 +68,22 @@ int EventLoop_ProcessEvents(EventLoop* el){
         filed = event->data.fd;
         el->fired[i].flags = flag;
         el->fired[i].fd = filed;
-        el->fired[i].acc = el->ev[filed].acc;
+        el->fired[i].accept_func = el->ev[filed].accept_func;
+        el->fired[i].read_func = el->ev[filed].read_func;
+        el->fired[i].write_func = el->ev[filed].write_func;
     }
     for(int j = 0 ; j < en; j++){
         FiredEvent* fe = el->fired +j;
+
         // IMPLEMENTED
-        if((el->fired[j].flags & EV_READABLE )) fe->acc(fe->fd);
-        // if((el->fired[j].flags & EV_WRITABLE)&& el->whandle) el->whandle(el->fired[j].fd, el->fired[j].flags);
+        if((el->fired[j].flags & EV_READABLE )&& fe->read_func == NULL ) fe->accept_func(fe->fd);
+        if((el->fired[j].flags & EV_READABLE )&& fe->read_func != NULL ) fe->read_func(fe->fd);
+        if((el->fired[j].flags & EV_WRITABLE)) fe->write_func(fe->fd);
     }
     return en;
 }
 
-int EventLoop_AddEvent(EventLoop* el, int fd, int flags,acceptor acc){
+int EventLoop_AddEvent(EventLoop* el, int fd, int flags, request_handler write_func, request_handler read_func,request_handler accept_func ){
     struct epoll_event ee = {0};
 
     if(el->setsize <= fd ){ 
@@ -87,18 +91,26 @@ int EventLoop_AddEvent(EventLoop* el, int fd, int flags,acceptor acc){
         return -1;
     }
     FileEvent* fe = &el->ev[fd];
-    fe->acc = acc;
+    if(read_func)
+        fe->read_func = read_func;
+
+    if(write_func)
+        fe->write_func = write_func;
+
+    if(accept_func)
+        fe->accept_func = accept_func;
+    // fe->accept_func = accept_func;
+    // fe->read_func = read_func;
+    // fe->write_func = write_func;
     int op = el->ev[fd].mask == EV_NULL ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
     fe->mask |= flags;
-    // fe->read_handler = reader;
-    // fe->write_handler = writer;
     ee.data.fd = fd;
 
-    if(flags & EV_READABLE){
+    if(fe->mask & EV_READABLE){
         ee.events |= EPOLLIN;
-        fe->acc = acc;
+        fe->accept_func = accept_func;
     }
-    if(flags & EV_WRITABLE) ee.events |= EPOLLOUT;
+    if(fe->mask & EV_WRITABLE) ee.events |= EPOLLOUT;
 
     int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
     if(res == -1){
@@ -112,7 +124,7 @@ int EventLoop_ModEvent(EventLoop* el, int fd, int flags){
     struct epoll_event ee = {0};
     int op = EPOLL_CTL_MOD;
 
-    if(el->nevents <= fd ) return -1;
+    if(el->setsize <= fd ) return -1;
     el->ev[fd].mask = flags;
     if(flags & EV_READABLE) ee.events |= EPOLLIN;
     if(flags & EV_WRITABLE) ee.events |= EPOLLOUT;

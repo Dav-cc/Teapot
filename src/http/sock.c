@@ -1,3 +1,4 @@
+#include "sock.h"
 #include "../core/log.h"
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -7,7 +8,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-
 
 int sock_set_nonblocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
@@ -33,6 +33,17 @@ int sock_set_nodelay(int fd) {
         return -1;
     }
     return 1;
+}
+
+int accept_handler(int fd){
+    struct sockaddr_in addr;
+    socklen_t socketlen = sizeof(addr);
+    int afd = accept(fd, (struct sockaddr*)&addr, &socketlen);
+    if(afd == -1){
+        log_message(LOG_LEVEL_ERROR, "error in accepting : %s", strerror(errno));
+    }
+    sock_set_nonblocking(afd);
+    return 0;
 }
 
 
