@@ -76,9 +76,9 @@ int EventLoop_ProcessEvents(EventLoop* el){
         FiredEvent* fe = el->fired +j;
 
         // IMPLEMENTED
-        if((el->fired[j].flags & EV_READABLE )&& fe->read_func == NULL ) fe->accept_func(fe->fd);
-        if((el->fired[j].flags & EV_READABLE )&& fe->read_func != NULL ) fe->read_func(fe->fd);
-        if((el->fired[j].flags & EV_WRITABLE)) fe->write_func(fe->fd);
+        if((el->fired[j].flags & EV_READABLE )&& fe->read_func == NULL ) fe->accept_func(fe->fd, el);
+        if((el->fired[j].flags & EV_READABLE )&& fe->read_func != NULL ) fe->read_func(fe->fd, el);
+        if((el->fired[j].flags & EV_WRITABLE)) fe->write_func(fe->fd,el);
     }
     return en;
 }
@@ -125,7 +125,7 @@ int EventLoop_ModEvent(EventLoop* el, int fd, int flags){
     int op = EPOLL_CTL_MOD;
 
     if(el->setsize <= fd ) return -1;
-    el->ev[fd].mask = flags;
+    el->ev[fd].mask |= flags;
     if(flags & EV_READABLE) ee.events |= EPOLLIN;
     if(flags & EV_WRITABLE) ee.events |= EPOLLOUT;
     ee.data.fd = fd;

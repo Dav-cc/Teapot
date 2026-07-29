@@ -1,5 +1,6 @@
 #include "sock.h"
 #include "../core/log.h"
+#include "../core/event.h"
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -35,17 +36,42 @@ int sock_set_nodelay(int fd) {
     return 1;
 }
 
-int accept_handler(int fd){
+int accept_handler(int fd, void* Loop){
+    EventLoop* Lp = Loop;
     struct sockaddr_in addr;
     socklen_t socketlen = sizeof(addr);
-    int afd = accept(fd, (struct sockaddr*)&addr, &socketlen);
-    if(afd == -1){
-        log_message(LOG_LEVEL_ERROR, "error in accepting : %s", strerror(errno));
+    for(;;){
+        int afd = accept(fd, (struct sockaddr*)&addr, &socketlen);
+        if(afd == -1){
+            log_message(LOG_LEVEL_ERROR, "error in accept() : %s", strerror(errno));
+            return -1;
+        }
+        sock_set_nonblocking(afd);
+        int res = EventLoop_AddEvent(Lp, afd, EV_READABLE, write_handler, read_handler, NULL);
     }
-    sock_set_nonblocking(afd);
     return 0;
 }
 
+
+int write_handler(int fd, void* Loop){
+    EventLoop* Lp = Loop;
+    char buffer[70] = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello";
+    write(fd, buffer, sizeof(buffer));
+    close(fd);
+    log_message(LOG_LEVEL_INFO, "sended buffer = [[%s]]\n connection closed", buffer);
+    return 0;
+}
+
+int read_handler(int fd, void* Loop){
+    EventLoop* Lp = Loop;
+    char buffer[1024];
+    read(fd, buffer, sizeof(buffer));
+    log_message(LOG_LEVEL_INFO, " --- Recive Buffer ---\n %s", buffer);
+
+    log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
+    EventLoop_ModEvent(Lp,fd, EV_WRITABLE);
+    return 0;
+}
 
 int init_listen_socket(int port) {
     int yes =1;

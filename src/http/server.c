@@ -9,7 +9,7 @@
 
 
 int init_tcp_server(int port){
-    acceptor acc = &accept_handler;
+    request_handler acceptor = &accept_handler;
     int listenfd = init_listen_socket(port);
     if(listenfd == -1){
         log_message(LOG_LEVEL_ERROR, "error in running server");
