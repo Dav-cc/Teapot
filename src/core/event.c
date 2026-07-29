@@ -1,27 +1,25 @@
 #include "log.h"
 #include "event.h"
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
-// #include <stdio.h>
 #include <string.h>
 #include <sys/epoll.h>
 #include <unistd.h>
 
-EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler read, WriteHandler write){
+EventLoop* create_EventLoop(int events_size){
     EventLoop* el = calloc(1,sizeof(EventLoop));
     if(!el){
         log_message(LOG_LEVEL_ERROR,"malloc faild : %s", strerror(errno));
         return NULL;
     }
-    el->fired = calloc(events_size, sizeof(FiredEvents));
+    el->fired = calloc(events_size, sizeof(FiredEvent));
     if(el->fired == NULL){
         free(el);
         log_message(LOG_LEVEL_ERROR,"calloc faild : %s", strerror(errno));
         return NULL;
     }
 
-    el->ev = calloc(events_size, sizeof(Events));
+    el->ev = calloc(events_size, sizeof(FileEvent));
     if(el->ev == NULL){
         free(el->fired);
         free(el);
@@ -30,10 +28,7 @@ EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler 
     }
 
     el->setsize = events_size;
-    el->handler = handler;
-    el->rhandle = read;
-    el->whandle = write;
-    el->ruuning = 0;
+    el->running = 0;
 
     el->state.epollfd = epoll_create1(0);
     if(el->state.epollfd == -1){
@@ -49,36 +44,62 @@ EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler 
 }
 
 int EventLoop_ProcessEvents(EventLoop* el){
-    int en;
-    int nevent = epoll_wait(el->state.epollfd, el->state.events, el->setsize, -1);
-    if(nevent == -1){
-        log_message(LOG_LEVEL_ERROR,"epoll wait returned -1 : %s", strerror(errno));
-        return -1;
+    int en, filed;
+    int nevent = 0;
+    while((nevent = epoll_wait(el->state.epollfd, el->state.events, el->setsize, -1)) == -1){
+        if(nevent >= 0)break;
+        if(nevent == -1){
+            if(errno == EINTR){
+                log_message(LOG_LEVEL_WARN, "recived EINTR signal, but event loop continues");
+                if(!el->running) return 0;
+                continue;
+            }
+            log_message(LOG_LEVEL_ERROR,"epoll wait returned -1 : %s", strerror(errno));
+            return -1;
+    }
     }
     en = nevent;
     for(int i = 0; i < en; i++){
         int flag = 0;
         struct epoll_event *event = el->state.events+i;
-        if(event->events & EPOLLIN) flag |= FD_REDABLE;
-        if(event->events & EPOLLOUT) flag |= FD_WRITABLE;
-        el->fired[i].fd = event->data.fd;
+        if(event->events & EPOLLIN) flag |= EV_READABLE;
+        if(event->events & EPOLLOUT) flag |= EV_WRITABLE;
+
+        filed = event->data.fd;
         el->fired[i].flags = flag;
+        el->fired[i].fd = filed;
+        el->fired[i].acc = el->ev[filed].acc;
     }
     for(int j = 0 ; j < en; j++){
-        if((el->fired[j].flags & FD_REDABLE )&& el->rhandle) el->handler(el->fired[j].fd, el->fired[j].flags);
-        if((el->fired[j].flags & FD_WRITABLE)&& el->whandle) el->whandle(el->fired[j].fd, el->fired[j].flags);
+        FiredEvent* fe = el->fired +j;
+        // IMPLEMENTED
+        if((el->fired[j].flags & EV_READABLE )) fe->acc(fe->fd);
+        // if((el->fired[j].flags & EV_WRITABLE)&& el->whandle) el->whandle(el->fired[j].fd, el->fired[j].flags);
     }
     return en;
 }
 
-int EventLoop_AddFd(EventLoop* el, int fd, int flags){
+int EventLoop_AddEvent(EventLoop* el, int fd, int flags,acceptor acc){
     struct epoll_event ee = {0};
-    int op = el->ev[fd].mask == FD_NULL ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
-    flags |= el->ev[fd].mask;
-    el->ev[fd].mask = flags;
-    if(flags & FD_REDABLE) ee.events |= EPOLLIN;
-    if(flags & FD_WRITABLE) ee.events |= EPOLLOUT;
+
+    if(el->setsize <= fd ){ 
+        log_message(LOG_LEVEL_ERROR, "given fd is bigger that fd set size");
+        return -1;
+    }
+    FileEvent* fe = &el->ev[fd];
+    fe->acc = acc;
+    int op = el->ev[fd].mask == EV_NULL ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+    fe->mask |= flags;
+    // fe->read_handler = reader;
+    // fe->write_handler = writer;
     ee.data.fd = fd;
+
+    if(flags & EV_READABLE){
+        ee.events |= EPOLLIN;
+        fe->acc = acc;
+    }
+    if(flags & EV_WRITABLE) ee.events |= EPOLLOUT;
+
     int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
@@ -87,13 +108,14 @@ int EventLoop_AddFd(EventLoop* el, int fd, int flags){
     return 0;
 }
 
-int EventLoop_ModFd(EventLoop* el, int fd, int flags){
+int EventLoop_ModEvent(EventLoop* el, int fd, int flags){
     struct epoll_event ee = {0};
     int op = EPOLL_CTL_MOD;
-    el->ev[fd].mask = 0;
+
+    if(el->nevents <= fd ) return -1;
     el->ev[fd].mask = flags;
-    if(flags & FD_REDABLE) ee.events |= EPOLLIN;
-    if(flags & FD_WRITABLE) ee.events |= EPOLLOUT;
+    if(flags & EV_READABLE) ee.events |= EPOLLIN;
+    if(flags & EV_WRITABLE) ee.events |= EPOLLOUT;
     ee.data.fd = fd;
 
     int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
@@ -105,28 +127,33 @@ int EventLoop_ModFd(EventLoop* el, int fd, int flags){
 }
 
 
-int EventLoop_DelFd(EventLoop* el, int fd){
+int EventLoop_DelEvent(EventLoop* el, int fd){
     int res = epoll_ctl(el->state.epollfd, EPOLL_CTL_DEL, fd, NULL);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
         return -1;
     }
-    el->ev[fd].mask = FD_NULL;
+    
+    if(el->setsize <= fd ) {
+            log_message(LOG_LEVEL_ERROR, "given fd is bigger that fd set size");
+            return -1;
+        }
+    el->ev[fd].mask = EV_NULL;
     return 0;
 }
 
 void RunEventLoop(EventLoop* el){
-    el->ruuning = 1;
+    el->running = 1;
     log_message(LOG_LEVEL_INFO, "entring event loop . . . ");
-    while(el->ruuning){
+    while(el->running){
         EventLoop_ProcessEvents(el);
     }
 }
 
-void EventLoop_Distroy(EventLoop* el){
-    if (!el->ev || !el->fired){
-    free(el->ev);
-    free(el->fired);
+void EventLoop_Destroy(EventLoop* el) {
+    if(!el) return ;
+    if (el->ev) free(el->ev);
+    if (el->fired) free(el->fired);
+    if (el->state.epollfd >= 0) close(el->state.epollfd);
     free(el);
-    }
 }

@@ -9,8 +9,6 @@
 #include <errno.h>
 
 
-#define BACKLOG 120
-
 int sock_set_nonblocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1) {
@@ -43,11 +41,13 @@ int init_listen_socket(int port) {
     struct sockaddr_in addr = {0};
 
     // creat tcp ipv4 socket
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    int sockfd = socket(AF_INET, SOCK_STREAM|SOCK_NONBLOCK|SOCK_CLOEXEC, 0);
     if(sockfd < 0){
         log_message(LOG_LEVEL_ERROR, "socket() failed : %s", strerror(errno));
         return -1;
     }
+    sock_set_reuseaddr(sockfd);
+    sock_set_nodelay(sockfd);
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
@@ -60,7 +60,7 @@ int init_listen_socket(int port) {
         return -1;
     }
 
-    int listen_res = listen(sockfd, BACKLOG);
+    int listen_res = listen(sockfd, SOMAXCONN);
     if(listen_res < 0){
         log_message(LOG_LEVEL_ERROR, "listen() failed : %s", strerror(errno));
         close(sockfd);
