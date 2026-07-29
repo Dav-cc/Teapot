@@ -2,28 +2,30 @@
 #define __EVENT_H__
 
 #include <sys/epoll.h>
+#include "../http/server.h"
 
 #define EVENTS_SIZE 1024
 
 
-#define FD_REDABLE     2
-#define FD_WRITABLE    1
-#define FD_NULL        0 // not registerd events
+#define EV_READABLE     2
+#define EV_WRITABLE    1
+#define EV_NULL        0 // not registerd events
 
-typedef void(*AcceptHandler)(int, int);
-typedef void(*ReadHandler)(int, int);
-typedef void(*WriteHandler)(int, int);
-
-typedef struct Event{
+typedef struct FileEvent{
     int fd;
     int mask;
-    ReadHandler rhandle;
-    WriteHandler whandle;
-}Events;
-typedef struct FiredEvents {
+    request_handler accept_func;
+    request_handler write_func;
+    request_handler read_func;
+}FileEvent;
+
+typedef struct FiredEvent {
     int fd;
     int flags;
-}FiredEvents;
+    request_handler accept_func;
+    request_handler write_func;
+    request_handler read_func;
+}FiredEvent;
 
 typedef struct Eventstate{
     int epollfd;
@@ -31,22 +33,21 @@ typedef struct Eventstate{
 }Eventstate;
 
 typedef struct EventLoop {
-    int ruuning;
+    int running;
     int nevents;
     int setsize;
-    AcceptHandler handler;
-    ReadHandler rhandle;
-    WriteHandler whandle;
     Eventstate state;
-    FiredEvents* fired;
-    Events* ev;
+    FiredEvent* fired;
+    FileEvent* ev;
 }EventLoop;
 
 int EventLoop_ProcessEvents(EventLoop* el);
 void RunEventLoop(EventLoop* el);
-EventLoop* create_EventLoop(int events_size, AcceptHandler handler, ReadHandler read, WriteHandler write);
-int EventLoop_DelFd(EventLoop* el, int fd);
-int EventLoop_ModFd(EventLoop* el, int fd, int flags);
-int EventLoop_AddFd(EventLoop* el, int fd, int flags);
+EventLoop* create_EventLoop(int events_size);
+int EventLoop_DelEvent(EventLoop* el, int fd);
+int EventLoop_ModEvent(EventLoop* el, int fd, int flags);
+// int EventLoop_AddEvent(EventLoop* el, int fd, int flags, ReadHandler reader, WriteHandler writer, void* client_data);
+int EventLoop_AddEvent(EventLoop* el, int fd, int flags,request_handler write_func, request_handler read_func,request_handler accept_func );
+void EventLoop_Destroy(EventLoop* el);
 
 #endif  // __EVENT_H__
