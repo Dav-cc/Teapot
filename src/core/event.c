@@ -117,19 +117,21 @@ int EventLoop_AddEvent(EventLoop* el, int fd, int flags, request_handler write_f
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
         return -1;
     }
+    log_message(LOG_LEVEL_INFO,"ADD fd=%d",fd);
     return 0;
 }
 
-int EventLoop_ModEvent(EventLoop* el, int fd, int flags){
+int EventLoop_ModEvent(EventLoop* el, int fd, int flag){
     struct epoll_event ee = {0};
     int op = EPOLL_CTL_MOD;
 
-    if(el->setsize <= fd ) return -1;
-    el->ev[fd].mask |= flags;
-    if(flags & EV_READABLE) ee.events |= EPOLLIN;
-    if(flags & EV_WRITABLE) ee.events |= EPOLLOUT;
+    if((el->setsize <= fd )&& fd > 0) return -1;
+        el->ev[fd].mask |= flag;
+    int mask = el->ev[fd].mask;
+    if(mask & EV_READABLE) ee.events |= EPOLLIN;
+    if(mask & EV_WRITABLE) ee.events |= EPOLLOUT;
     ee.data.fd = fd;
-
+    log_message(LOG_LEVEL_INFO,"MOD fd=%d mask=%d",fd,mask);
     int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
@@ -150,7 +152,7 @@ int EventLoop_DelEvent(EventLoop* el, int fd){
             log_message(LOG_LEVEL_ERROR, "given fd is bigger that fd set size");
             return -1;
         }
-    el->ev[fd].mask = EV_NULL;
+    el->ev[fd].mask = EV_NULL;log_message(LOG_LEVEL_INFO,"DEL fd=%d",fd);
     return 0;
 }
 

@@ -1,4 +1,5 @@
 #include "sock.h"
+#include "server.h"
 #include "../core/log.h"
 #include "../core/event.h"
 #include <fcntl.h>
@@ -36,28 +37,30 @@ int sock_set_nodelay(int fd) {
     return 1;
 }
 
-int accept_handler(int fd, void* Loop){
-    EventLoop* Lp = Loop;
-    struct sockaddr_in addr;
-    socklen_t socketlen = sizeof(addr);
-    for(;;){
-        int afd = accept(fd, (struct sockaddr*)&addr, &socketlen);
-        if(afd == -1){
-            log_message(LOG_LEVEL_ERROR, "error in accept() : %s", strerror(errno));
-            return -1;
-        }
-        sock_set_nonblocking(afd);
-        int res = EventLoop_AddEvent(Lp, afd, EV_READABLE, write_handler, read_handler, NULL);
-    }
-    return 0;
-}
+// int accept_handler(int fd, void* Loop){
+//     EventLoop* Lp = Loop;
+//     struct sockaddr_in addr;
+//     socklen_t socketlen = sizeof(addr);
+//     for(;;){
+//         int afd = accept(fd, (struct sockaddr*)&addr, &socketlen);
+//         if(afd == -1){
+//             log_message(LOG_LEVEL_ERROR, "error in accept() : %s", strerror(errno));
+//             return -1;
+//         }
+//         sock_set_nonblocking(afd);
+//         int res = EventLoop_AddEvent(Lp, afd, EV_READABLE, write_handler, read_handler, NULL);
+//     }
+//     return 0;
+// }
 
 
 int write_handler(int fd, void* Loop){
     EventLoop* Lp = Loop;
-    char buffer[70] = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello";
+    char buffer[70] = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nhello\n";
     write(fd, buffer, sizeof(buffer));
+    EventLoop_DelEvent(Lp, fd);
     close(fd);
+    log_message(LOG_LEVEL_INFO,"CLOSE fd=%d",fd);
     log_message(LOG_LEVEL_INFO, "sended buffer = [[%s]]\n connection closed", buffer);
     return 0;
 }
@@ -94,6 +97,7 @@ int init_listen_socket(int port) {
     if(res < 0){
         log_message(LOG_LEVEL_ERROR, "bind() failed : %s", strerror(errno));
         close(sockfd);
+        log_message(LOG_LEVEL_INFO,"CLOSE fd=%d",sockfd);
         return -1;
     }
 
@@ -101,6 +105,7 @@ int init_listen_socket(int port) {
     if(listen_res < 0){
         log_message(LOG_LEVEL_ERROR, "listen() failed : %s", strerror(errno));
         close(sockfd);
+        log_message(LOG_LEVEL_INFO,"CLOSE fd=%d",sockfd);
         return -1;
     }
     sock_set_nonblocking(sockfd);
