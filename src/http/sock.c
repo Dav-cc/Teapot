@@ -37,42 +37,42 @@ int sock_set_nodelay(int fd) {
     return 1;
 }
 
-// int accept_handler(int fd, void* Loop){
+// int accept_handler(Connection* conn, void* Loop){
 //     EventLoop* Lp = Loop;
 //     struct sockaddr_in addr;
 //     socklen_t socketlen = sizeof(addr);
 //     for(;;){
-//         int afd = accept(fd, (struct sockaddr*)&addr, &socketlen);
+//         int afd = accept(conn->fd, (struct sockaddr*)&addr, &socketlen);
 //         if(afd == -1){
 //             log_message(LOG_LEVEL_ERROR, "error in accept() : %s", strerror(errno));
 //             return -1;
 //         }
 //         sock_set_nonblocking(afd);
-//         int res = EventLoop_AddEvent(Lp, afd, EV_READABLE, write_handler, read_handler, NULL);
+//         int res = EventLoop_AddEvent(loop, );
 //     }
 //     return 0;
 // }
 
 
-int write_handler(int fd, void* Loop){
+int write_handler(Connection* conn, void* Loop){
     EventLoop* Lp = Loop;
     char buffer[70] = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nhello\n";
-    write(fd, buffer, sizeof(buffer));
-    EventLoop_DelEvent(Lp, fd);
-    close(fd);
-    log_message(LOG_LEVEL_INFO,"CLOSE fd=%d",fd);
+    write(conn->fd, buffer, sizeof(buffer));
+    EventLoop_DelEvent(Lp, conn);
+    connection_destroy(conn); 
+    log_message(LOG_LEVEL_INFO,"Destroyed Conn Object");
     log_message(LOG_LEVEL_INFO, "sended buffer = [[%s]]\n connection closed", buffer);
     return 0;
 }
 
-int read_handler(int fd, void* Loop){
+int read_handler(Connection* conn, void* Loop){
     EventLoop* Lp = Loop;
     char buffer[1024];
-    read(fd, buffer, sizeof(buffer));
+    read(conn->fd, buffer, sizeof(buffer));
     log_message(LOG_LEVEL_INFO, " --- Recive Buffer ---\n %s", buffer);
 
     log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
-    EventLoop_ModEvent(Lp,fd, EV_WRITABLE);
+    EventLoop_ModEvent(Lp,conn, EV_WRITABLE);
     return 0;
 }
 

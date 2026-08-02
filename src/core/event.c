@@ -68,71 +68,77 @@ int EventLoop_ProcessEvents(EventLoop* el){
         filed = event->data.fd;
         el->fired[i].flags = flag;
         el->fired[i].fd = filed;
-        el->fired[i].accept_func = el->ev[filed].accept_func;
-        el->fired[i].read_func = el->ev[filed].read_func;
-        el->fired[i].write_func = el->ev[filed].write_func;
+        //comented here
+        // el->fired[i].conn->accept_func = el->ev[filed].conn->accept_func;
+        // el->fired[i].conn->read_func = el->ev[filed].conn->read_func;
+        // el->fired[i].conn->write_func = el->ev[filed].conn->write_func;
+         el->fired[i].conn = el->ev[filed].conn;
     }
     for(int j = 0 ; j < en; j++){
         FiredEvent* fe = el->fired +j;
 
         // IMPLEMENTED
-        if((el->fired[j].flags & EV_READABLE )&& fe->read_func == NULL ) fe->accept_func(fe->fd, el);
-        if((el->fired[j].flags & EV_READABLE )&& fe->read_func != NULL ) fe->read_func(fe->fd, el);
-        if((el->fired[j].flags & EV_WRITABLE)) fe->write_func(fe->fd,el);
+        if((el->fired[j].flags & EV_READABLE )&& fe->conn->read_func == NULL ) fe->conn->accept_func(fe->conn, el);
+        if((el->fired[j].flags & EV_READABLE )&& fe->conn->read_func != NULL ) fe->conn->read_func(fe->conn, el);
+        if((el->fired[j].flags & EV_WRITABLE)) fe->conn->write_func(fe->conn,el);
     }
     return en;
 }
 
-int EventLoop_AddEvent(EventLoop* el, int fd, int flags, request_handler write_func, request_handler read_func,request_handler accept_func ){
+int EventLoop_AddEvent(EventLoop* el, Connection* conn , int flags){
     struct epoll_event ee = {0};
 
-    if(el->setsize <= fd ){ 
+    if(el->setsize <= conn->fd ){ 
         log_message(LOG_LEVEL_ERROR, "given fd is bigger that fd set size");
         return -1;
     }
-    FileEvent* fe = &el->ev[fd];
-    if(read_func)
-        fe->read_func = read_func;
+    FileEvent* fe;
+    fe = &el->ev[conn->fd];
+    fe->conn = conn;
 
-    if(write_func)
-        fe->write_func = write_func;
-
-    if(accept_func)
-        fe->accept_func = accept_func;
+    //comented this
+    // if(conn->read_func)
+    //     fe->conn->read_func = conn->read_func;
+    //
+    // if(conn->write_func)
+    //     fe->conn->write_func = conn->write_func;
+    //
+    // if(conn->accept_func)
+    //     fe->conn->accept_func = conn->accept_func;
     // fe->accept_func = accept_func;
     // fe->read_func = read_func;
     // fe->write_func = write_func;
-    int op = el->ev[fd].mask == EV_NULL ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+    int op = el->ev[conn->fd].mask == EV_NULL ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
     fe->mask |= flags;
-    ee.data.fd = fd;
+    ee.data.fd = conn->fd;
 
     if(fe->mask & EV_READABLE){
         ee.events |= EPOLLIN;
-        fe->accept_func = accept_func;
+        fe->conn->accept_func = conn->accept_func;
     }
     if(fe->mask & EV_WRITABLE) ee.events |= EPOLLOUT;
 
-    int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
+    int res = epoll_ctl(el->state.epollfd, op, conn->fd, &ee);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
         return -1;
     }
-    log_message(LOG_LEVEL_INFO,"ADD fd=%d",fd);
+    log_message(LOG_LEVEL_INFO,"ADD fd=%d",conn->fd);
     return 0;
 }
 
-int EventLoop_ModEvent(EventLoop* el, int fd, int flag){
+int EventLoop_ModEvent(EventLoop* el, Connection* conn, int flag){
     struct epoll_event ee = {0};
     int op = EPOLL_CTL_MOD;
 
-    if((el->setsize <= fd )&& fd > 0) return -1;
-        el->ev[fd].mask |= flag;
-    int mask = el->ev[fd].mask;
+    if((el->setsize <= conn->fd )&& conn->fd > 0) return -1;
+        el->ev[conn->fd].mask |= flag;
+    int mask = el->ev[conn->fd].mask;
     if(mask & EV_READABLE) ee.events |= EPOLLIN;
     if(mask & EV_WRITABLE) ee.events |= EPOLLOUT;
-    ee.data.fd = fd;
-    log_message(LOG_LEVEL_INFO,"MOD fd=%d mask=%d",fd,mask);
-    int res = epoll_ctl(el->state.epollfd, op, fd, &ee);
+    ee.data.fd = conn->fd;
+    log_message(LOG_LEVEL_INFO,"MOD fd=%d mask=%d",conn->fd,mask);
+    int res = epoll_ctl(el->state.epollfd, op, conn->fd, &ee);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
         return -1;
@@ -140,19 +146,18 @@ int EventLoop_ModEvent(EventLoop* el, int fd, int flag){
     return 0;
 }
 
-
-int EventLoop_DelEvent(EventLoop* el, int fd){
-    int res = epoll_ctl(el->state.epollfd, EPOLL_CTL_DEL, fd, NULL);
+int EventLoop_DelEvent(EventLoop* el, Connection* conn){
+    int res = epoll_ctl(el->state.epollfd, EPOLL_CTL_DEL, conn->fd, NULL);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
         return -1;
     }
     
-    if(el->setsize <= fd ) {
+    if(el->setsize <= conn->fd ) {
             log_message(LOG_LEVEL_ERROR, "given fd is bigger that fd set size");
             return -1;
         }
-    el->ev[fd].mask = EV_NULL;log_message(LOG_LEVEL_INFO,"DEL fd=%d",fd);
+    el->ev[conn->fd].mask = EV_NULL;log_message(LOG_LEVEL_INFO,"DEL fd=%d",conn->fd);
     return 0;
 }
 
