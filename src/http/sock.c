@@ -100,9 +100,15 @@ int read_handler(Connection* conn, void* Loop){
     char buffer[1024]  ;
     ssize_t readed = read(conn->fd, buffer, sizeof(buffer));
     if(readed == 0){
+        EventLoop_DelEvent(Lp, conn);
+        connection_destroy(conn);
+        return -1;
+    }
+    if(readed == -1){
         if(errno == EAGAIN || errno == EWOULDBLOCK){
         log_message(LOG_LEVEL_ERROR, "recieved EAGAIN or EWOULDBLOCK signal");
-        exit(EXIT_FAILURE);}
+        return 0;
+        }
     }
     log_message(LOG_LEVEL_INFO, " --- Recive Buffer --- : {{ %.*s }}",sizeof(buffer)/sizeof(char), buffer);
 

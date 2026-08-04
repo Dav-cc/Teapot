@@ -3,7 +3,7 @@
 LLevel log_level = LOG_LEVEL_DEBUG;
 
 void log_message(LLevel level, char* format, ...) {
-    if (log_level < level) {
+    if (log_level > level) {
         return;
     }
 

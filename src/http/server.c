@@ -28,6 +28,7 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
     return conn;
 }
 int connection_destroy(Connection* conn){
+    log_message(LOG_LEVEL_INFO,"Closing connecting- fd = %d, ", conn->fd);
     close(conn->fd);
     free(conn);
     return 0;
