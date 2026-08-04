@@ -96,7 +96,7 @@ int write_handler(Connection* conn, void* Loop){
 
 int read_handler(Connection* conn, void* Loop){
     EventLoop* Lp = Loop;
-    char buffer[1024];
+    char buffer[1024]  ;
     read(conn->fd, buffer, sizeof(buffer));
     log_message(LOG_LEVEL_INFO, " --- Recive Buffer --- : {{ %s }}", buffer);
 
