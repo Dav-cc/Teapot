@@ -21,6 +21,7 @@ struct Connection{
     int listener;
     int rlen;
     int wlen;
+    int keep_alive;
     conn_state state; 
     char* rbuff;
     char* wbuff;
