@@ -132,7 +132,7 @@ int EventLoop_ModEvent(EventLoop* el, Connection* conn, int flag){
     int op = EPOLL_CTL_MOD;
 
     if((el->setsize <= conn->fd )&& conn->fd > 0) return -1;
-        el->ev[conn->fd].mask |= flag;
+        el->ev[conn->fd].mask = flag;   // |= to =
     int mask = el->ev[conn->fd].mask;
     if(mask & EV_READABLE) ee.events |= EPOLLIN;
     if(mask & EV_WRITABLE) ee.events |= EPOLLOUT;

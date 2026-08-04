@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "server.h"
 #include "../core/event.h"
 #include "../core/log.h"
@@ -10,7 +11,6 @@
 #include <stdlib.h>
 
 
-
 Connection* connection_creat(int fd, int is_listener, connection_handler acc, connection_handler readd, connection_handler writee){
     Connection* conn = calloc(1, sizeof(Connection));
     if(!conn){
@@ -20,6 +20,7 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
     conn->fd = fd;
     conn->rlen = 0;
     conn->wlen = 0;
+    conn->keep_alive = 1;
     conn->accept_func= acc;
     conn->read_func = readd;
     conn->write_func = writee;
@@ -53,14 +54,14 @@ int accept_handler(Connection* conn, void* Loop){
     struct sockaddr_in addr;
     for(;;){
         socklen_t socketlen = sizeof(addr);
-        int afd = accept(conn->fd, (struct sockaddr*)&addr, &socketlen);
+        int afd = accept4(conn->fd, (struct sockaddr*)&addr, &socketlen, SOCK_NONBLOCK|SOCK_CLOEXEC);
         if(afd == -1){
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
             log_message(LOG_LEVEL_ERROR, "error in accept() : %s", strerror(errno));
             return -1;
         }
-        sock_set_nonblocking(afd);
+        sock_set_keep_alive(afd);
         Connection* accept_conn = connection_creat(afd, 0, NULL, read_handle, write_handle);
         int res = EventLoop_AddEvent(Lp, accept_conn , EV_READABLE);
     }
