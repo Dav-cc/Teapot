@@ -64,7 +64,16 @@ int EventLoop_ProcessEvents(EventLoop* el){
         struct epoll_event *event = el->state.events+i;
         if(event->events & EPOLLIN) flag |= EV_READABLE;
         if(event->events & EPOLLOUT) flag |= EV_WRITABLE;
-
+        if(event->events & EPOLLERR){ 
+            flag |= EV_ERROR;
+            log_message(LOG_LEVEL_WARN," getting EPOLLERR error in socket, connection closed");
+            close(el->ev[i].fd);
+        }
+        if(event->events & EPOLLRDHUP){
+            flag |= EV_EPOLLRDHUP;
+            log_message(LOG_LEVEL_WARN," getting EPOLLRDHUP error in socket, connection closed");
+            close(el->ev[i].fd);
+        }
         filed = event->data.fd;
         el->fired[i].flags = flag;
         el->fired[i].fd = filed;

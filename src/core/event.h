@@ -6,8 +6,9 @@
 
 #define EVENTS_SIZE 1024
 
-
-#define EV_READABLE     2
+#define EV_EPOLLRDHUP  4
+#define EV_ERROR       3
+#define EV_READABLE    2
 #define EV_WRITABLE    1
 #define EV_NULL        0 // not registerd events
 

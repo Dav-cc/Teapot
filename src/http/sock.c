@@ -8,6 +8,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
@@ -97,11 +98,17 @@ int write_handler(Connection* conn, void* Loop){
 int read_handler(Connection* conn, void* Loop){
     EventLoop* Lp = Loop;
     char buffer[1024]  ;
-    read(conn->fd, buffer, sizeof(buffer));
-    log_message(LOG_LEVEL_INFO, " --- Recive Buffer --- : {{ %s }}", buffer);
+    ssize_t readed = read(conn->fd, buffer, sizeof(buffer));
+    if(readed == 0){
+        if(errno == EAGAIN || errno == EWOULDBLOCK){
+        log_message(LOG_LEVEL_ERROR, "recieved EAGAIN or EWOULDBLOCK signal");
+        exit(EXIT_FAILURE);}
+    }
+    log_message(LOG_LEVEL_INFO, " --- Recive Buffer --- : {{ %.*s }}",sizeof(buffer)/sizeof(char), buffer);
 
     log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
     EventLoop_ModEvent(Lp,conn, EV_WRITABLE);
+    
     return 0;
 }
 
