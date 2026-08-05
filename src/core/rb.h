@@ -2,6 +2,7 @@
 #define RB_TEAPOT_H
 
 #include <stdlib.h>
+#include <unistd.h>
 
 typedef struct RingBuffer {
     char *data;
@@ -17,5 +18,7 @@ size_t rb_writable(RingBuffer *rb);
 size_t rb_write(RingBuffer *rb,void *src, size_t len);
 size_t rb_read(RingBuffer *rb,void *dst, size_t len);
 void rb_reset(RingBuffer *rb);
-
+size_t rb_contiguous_writable(RingBuffer* rb);
+ssize_t rb_socket_read(RingBuffer *rb, int fd);
+ssize_t rb_socket_write(RingBuffer *rb, int fd);
 #endif

@@ -1,6 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "../core/rb.h"
 typedef struct Connection Connection;
 typedef int(*connection_handler)(Connection* conn, void* Loop);
 
@@ -10,21 +11,24 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
 int connection_destroy(Connection* conn);
 
 typedef enum {
-    CONN_RECIEVING = 0,
     CONN_READING,
     CONN_WRITING,
-    CONN_ERR,
 }conn_state;
 
 struct Connection{
     int fd;
     int listener;
+
     int rlen;
     int wlen;
+
     int keep_alive;
+
     conn_state state; 
-    char* rbuff;
-    char* wbuff;
+
+    RingBuffer* read_buff;
+    RingBuffer* write_buff;
+
     connection_handler accept_func;
     connection_handler write_func;
     connection_handler read_func;

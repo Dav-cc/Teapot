@@ -8,7 +8,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
@@ -72,49 +71,59 @@ int sock_set_nodelay(int fd) {
     return 1;
 }
 
+int write_handler(Connection *conn, void *Loop) {
+    EventLoop *Lp = Loop;
+    conn->write_buff = rb_create(2048);
+    conn->state = CONN_WRITING;
+    if (rb_readable(conn->write_buff) == 0) {
+        const char *buffer = "HTTP/1.1 200 OK\r\n"
+                             "Content-Length: 5\r\n"
+                             "Connection: keep-alive\r\n"
+                             "\r\n"
+                             "hello";
+        rb_write(conn->write_buff, (void *)buffer, strlen(buffer));
+    }
+    ssize_t writed = rb_socket_write(conn->write_buff, conn->fd);
 
-
-int write_handler(Connection* conn, void* Loop){
-    EventLoop* Lp = Loop;
-    const char *buffer =
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Length: 5\r\n"
-    "Connection: keep-alive\r\n"
-    "\r\n"
-    "hello";
-    write(conn->fd, buffer, strlen(buffer));
-
-
-    log_message(LOG_LEVEL_INFO,"Going to change mod to Readable again for keep alive support");
-    EventLoop_ModEvent(Lp, conn, EV_READABLE);
-
-    // EventLoop_DelEvent(Lp, conn);
-    // connection_destroy(conn); 
-    // log_message(LOG_LEVEL_INFO,"Destroyed Conn Object");
-    // log_message(LOG_LEVEL_INFO, "sended buffer = [[%s]]\n connection closed", buffer);
+    if (writed == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          log_message(LOG_LEVEL_DEBUG, "fd=%d recieved EAGAIN signal", conn->fd);
+          return 0;
+        }
+        log_message(LOG_LEVEL_ERROR, "write error fd=%d : %s", conn->fd,strerror(errno));
+        EventLoop_DelEvent(Lp, conn);
+        connection_destroy(conn);
+        return -1;
+    }
+    log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
+    if (rb_readable(conn->write_buff) == 0) {
+        log_message(LOG_LEVEL_INFO,"Going to change mod to Readable again for keep alive support");
+        EventLoop_ModEvent(Lp, conn, EV_READABLE);
+    }
     return 0;
-}
+    }
 
 int read_handler(Connection* conn, void* Loop){
     EventLoop* Lp = Loop;
-    char buffer[1024]  ;
-    ssize_t readed = read(conn->fd, buffer, sizeof(buffer));
+    conn->state = CONN_READING;
+    conn->read_buff = rb_create(2048);
+    ssize_t readed = rb_socket_read(conn->read_buff,conn->fd);
     if(readed == 0){
+        log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);
         EventLoop_DelEvent(Lp, conn);
         connection_destroy(conn);
         return -1;
     }
     if(readed == -1){
         if(errno == EAGAIN || errno == EWOULDBLOCK){
-        log_message(LOG_LEVEL_ERROR, "recieved EAGAIN or EWOULDBLOCK signal");
+        log_message(LOG_LEVEL_ERROR, "fd = %d recieved EAGAIN or EWOULDBLOCK signal", conn->fd);
         return 0;
         }
     }
-    log_message(LOG_LEVEL_INFO, " --- Recive Buffer --- : {{ %.*s }}",sizeof(buffer)/sizeof(char), buffer);
+    log_message(LOG_LEVEL_INFO, "fd = %d\n recived this buffer in %d bytes \n%s", conn->fd, readed, conn->read_buff->data);
 
     log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
     EventLoop_ModEvent(Lp,conn, EV_WRITABLE);
-    
     return 0;
 }
 

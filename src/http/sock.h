@@ -2,6 +2,7 @@
 #define __SOCK_H_
 
 #include "server.h"
+#include "../core/rb.h"
 
 
 
