@@ -22,6 +22,7 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
         log_message(LOG_LEVEL_ERROR,"error in creatint read buffer, %s ", strerror(errno));
         free(conn);
     }
+    conn->write_buff = rb_create(2048);
     if(!conn->write_buff){
         log_message(LOG_LEVEL_ERROR,"error in creatint write buffer, %s ", strerror(errno));
         free(conn->read_buff);
