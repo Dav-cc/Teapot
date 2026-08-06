@@ -73,7 +73,6 @@ int sock_set_nodelay(int fd) {
 
 int write_handler(Connection *conn, void *Loop) {
     EventLoop *Lp = Loop;
-    conn->write_buff = rb_create(2048);
     conn->state = CONN_WRITING;
     if (rb_readable(conn->write_buff) == 0) {
         const char *buffer = "HTTP/1.1 200 OK\r\n"
@@ -92,8 +91,6 @@ int write_handler(Connection *conn, void *Loop) {
         }
         log_message(LOG_LEVEL_ERROR, "write error fd=%d : %s", conn->fd,strerror(errno));
         EventLoop_DelEvent(Lp, conn);
-        rb_destroy(conn->read_buff);
-        rb_destroy(conn->write_buff);
         connection_destroy(conn);
         return -1;
     }
@@ -108,14 +105,11 @@ int write_handler(Connection *conn, void *Loop) {
 int read_handler(Connection* conn, void* Loop){
     EventLoop* Lp = Loop;
     conn->state = CONN_READING;
-    conn->read_buff = rb_create(2048);
     ssize_t readed = rb_socket_read(conn->read_buff,conn->fd);
     if(readed == 0){
         log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);
         EventLoop_DelEvent(Lp, conn);
         connection_destroy(conn);
-        rb_destroy(conn->read_buff);
-        rb_destroy(conn->write_buff);
         return -1;
     }
     if(readed == -1){
