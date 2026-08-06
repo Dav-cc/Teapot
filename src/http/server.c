@@ -29,6 +29,8 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
 }
 int connection_destroy(Connection* conn){
     log_message(LOG_LEVEL_INFO,"Closing connecting- fd = %d, ", conn->fd);
+    rb_destroy(conn->read_buff);
+    rb_destroy(conn->write_buff);
     close(conn->fd);
     free(conn);
     return 0;

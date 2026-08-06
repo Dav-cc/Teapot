@@ -92,6 +92,8 @@ int write_handler(Connection *conn, void *Loop) {
         }
         log_message(LOG_LEVEL_ERROR, "write error fd=%d : %s", conn->fd,strerror(errno));
         EventLoop_DelEvent(Lp, conn);
+        rb_destroy(conn->read_buff);
+        rb_destroy(conn->write_buff);
         connection_destroy(conn);
         return -1;
     }
@@ -112,6 +114,8 @@ int read_handler(Connection* conn, void* Loop){
         log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);
         EventLoop_DelEvent(Lp, conn);
         connection_destroy(conn);
+        rb_destroy(conn->read_buff);
+        rb_destroy(conn->write_buff);
         return -1;
     }
     if(readed == -1){
