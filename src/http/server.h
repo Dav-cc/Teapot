@@ -1,6 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "../parser/parser.h"
 #include "../core/rb.h"
 typedef struct Connection Connection;
 typedef int(*connection_handler)(Connection* conn, void* Loop);
@@ -26,12 +27,15 @@ struct Connection{
 
     conn_state state; 
 
-    RingBuffer* read_buff;
-    RingBuffer* write_buff;
+    buffer_t* read_buff;
+    buffer_t* write_buff;
 
     connection_handler accept_func;
     connection_handler write_func;
     connection_handler read_func;
+
+    http_request_t req;
+    http_parser_t parser;
 };
 
 #endif

@@ -17,17 +17,19 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
         log_message(LOG_LEVEL_ERROR, "error in calloc() for conn : %s", strerror(errno));
         return NULL;
     }
-    conn->read_buff = rb_create(2048);
+    conn->read_buff = db_create(2048);
     if(!conn->read_buff){
         log_message(LOG_LEVEL_ERROR,"error in creatint read buffer, %s ", strerror(errno));
         free(conn);
     }
-    conn->write_buff = rb_create(2048);
+    conn->write_buff = db_create(2048);
     if(!conn->write_buff){
         log_message(LOG_LEVEL_ERROR,"error in creatint write buffer, %s ", strerror(errno));
         free(conn->read_buff);
         free(conn);
     }
+    memset(&conn->req, 0, sizeof(conn->req)); // parser init
+
     conn->fd = fd;
     conn->rlen = 0;
     conn->wlen = 0;
