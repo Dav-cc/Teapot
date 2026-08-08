@@ -32,6 +32,7 @@ typedef struct http_request{
 
     http_slice_t body;
 
+    size_t request_line_len;
     size_t content_len;
 }http_request_t;
 
@@ -42,7 +43,9 @@ typedef struct http_parser{
     size_t headers_count;
 }http_parser_t;
 
+int  parse_request(buffer_t* read_buffer, size_t read_len, http_request_t* req);
 int  parse_request_line(buffer_t* read_buffer, size_t read_len, http_request_t* req);
+int  parse_headers(buffer_t* read_buffer, size_t read_len, http_request_t* req);
 void parser_destroy(http_request_t* req);
 
 #endif

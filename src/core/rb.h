@@ -13,7 +13,8 @@ typedef struct buffer{
 }buffer_t;
 
 buffer_t *db_create(size_t size);
-void rb_destroy(buffer_t *rb);
-ssize_t db_socket_read(buffer_t *db, int fd);
-ssize_t db_socket_write(buffer_t *db, int fd);
+void db_destroy(buffer_t *rb);
+size_t db_socket_read(buffer_t *db, int fd);
+size_t db_socket_write(buffer_t *db, int fd);
+size_t db_buff_append(buffer_t* buf, char* src, size_t size);
 #endif

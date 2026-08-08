@@ -24,7 +24,7 @@ buffer_t* db_create(size_t size){
         return db;
 }
 
-ssize_t db_socket_read(buffer_t *db, int fd){
+size_t db_socket_read(buffer_t *db, int fd){
     if(db->cap - db->len < 4096) {
         size_t new_cap = db->cap ? db->cap * 2 : 4096;
         char* tmp = realloc(db->data, new_cap); 
@@ -41,7 +41,7 @@ ssize_t db_socket_read(buffer_t *db, int fd){
     }
     return readed;
 }
-ssize_t db_socket_write(buffer_t *db, int fd){
+size_t db_socket_write(buffer_t *db, int fd){
     if(db->offset >= db->len){
             return 0;
     }
@@ -50,6 +50,22 @@ ssize_t db_socket_write(buffer_t *db, int fd){
       db->offset += n;
     }
     return n;
+}
+
+size_t db_buff_append(buffer_t* buf, char* src, size_t size){
+    if (buf->len + size > buf->cap) {
+        size_t new_cap = buf->cap;
+        while (new_cap < buf->len + size)
+            new_cap *= 2;
+        char *tmp = realloc(buf->data, new_cap);
+        if (!tmp)
+            return -1;
+        buf->data = tmp;
+        buf->cap = new_cap;
+    }
+    memcpy(buf->data + buf->len, src, size);
+    buf->len += size;
+    return 0;
 }
 
 void db_destroy(buffer_t *db){

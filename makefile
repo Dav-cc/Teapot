@@ -8,7 +8,8 @@ SRC = \
 	src/core/log.c \
 	src/http/server.c \
 	src/http/sock.c  \
-	src/core/rb.c
+	src/core/rb.c    \
+	src/parser/parser.c
 
 
 OBJ = $(SRC:.c=.o)
