@@ -118,7 +118,7 @@ int read_handler(Connection* conn, void* Loop){
         return 0;
         }
     }
-    log_message(LOG_LEVEL_INFO, "fd = %d\n recived this buffer in %d bytes \n%s", conn->fd, readed, conn->read_buff->data);
+    log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
 
     log_message(LOG_LEVEL_INFO, "buffer going for parse");
     parse_request(conn->read_buff, strlen(conn->read_buff->data),&conn->req);

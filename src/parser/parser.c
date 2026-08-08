@@ -13,6 +13,10 @@ int  parse_request(buffer_t* read_buffer, size_t read_len, http_request_t* req){
     if(headers_res != 0){
         log_message(LOG_LEVEL_ERROR, "error in parsing headers ");
     }
+    int body = parse_body(read_buffer, read_len, req);
+    if(body != 0){
+        log_message(LOG_LEVEL_ERROR, "error in parsing body ");
+    }
     return 0;
 }
 
@@ -55,8 +59,11 @@ int parse_headers(buffer_t *read_buffer, size_t read_len, http_request_t *req){
     char* c = read_buffer->data + req->request_line_len ; 
 
     while(1){
-        if (c[0] == '\r' && c[1] == '\n')
+        if (c[0] == '\r' && c[1] == '\n'){
+            req->body_start = (c + 2) - read_buffer->data;
+            req->body.key = read_buffer->data + req->body_start;
             break;
+        }
 
         char* ss = strchr(c , ':');
         if(!ss)
@@ -75,7 +82,7 @@ int parse_headers(buffer_t *read_buffer, size_t read_len, http_request_t *req){
 
         j++;
 
-        if(j > MAX_HEADERS_COUNT){
+        if(j >= MAX_HEADERS_COUNT){
             log_message(LOG_LEVEL_ERROR, "Too many errors");
             break;
         }
@@ -84,7 +91,24 @@ int parse_headers(buffer_t *read_buffer, size_t read_len, http_request_t *req){
         req->headers_count = j;
     }
     for(int k = 0; k < j;k++){
-        log_message(LOG_LEVEL_INFO, "headers.name = %.*s ------ headers.val = %.*s", req->headers[k].name.len, req->headers[k].name.key, req->headers[k].val.len, req->headers[k].val.key);
+        req->headers_len += (req->headers[k].name.len+req->headers[k].val.len);
+        log_message(LOG_LEVEL_INFO, "headers.name = %.*s <--> headers.val = %.*s", req->headers[k].name.len, req->headers[k].name.key, req->headers[k].val.len, req->headers[k].val.key);
     }
     return 0;
+}
+
+int parse_body(buffer_t *read_buffer, size_t read_len, http_request_t *req){
+    char* body_content = read_buffer->data + req->request_line_len + req->headers_len +(req->headers_count * 4) + 2; // +4 bytes for \r\n +2 for last double \r\n
+    log_message(LOG_LEVEL_INFO, "body=%s\nand it's length is = %d", body_content , strlen(body_content)); 
+    return 0;
+}
+
+http_headers_t* get_header(http_request_t* req, char* dest){
+    http_headers_t* hdr = req->headers ;
+    for (int i = 0; i< req->headers_count; i++){
+      if (req->headers[i].name.len == strlen(dest) &&strncmp(req->headers[i].name.key, dest, req->headers[i].name.len) ==0) {
+        return &req->headers[i];
+      }
+    }
+    return NULL;
 }
