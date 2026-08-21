@@ -85,8 +85,6 @@ int write_handler(Connection *conn, void *Loop) {
     size_t writed = db_socket_write(conn->write_buff, conn->fd);
 
 
-    // ssize_t writed = rb_socket_write(conn->write_buff, conn->fd);
-    //
     if (writed == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           log_message(LOG_LEVEL_DEBUG, "fd=%d recieved EAGAIN signal", conn->fd);
@@ -113,15 +111,13 @@ int read_handler(Connection* conn, void* Loop){
         return -1;
     }
     if(readed == -1){
-        if(errno == EAGAIN || errno == EWOULDBLOCK){
-        log_message(LOG_LEVEL_ERROR, "fd = %d recieved EAGAIN or EWOULDBLOCK signal", conn->fd);
-        return 0;
-        }
+        log_message(LOG_LEVEL_ERROR, "peer fd = %d errored sent no data", conn->fd);
+        connection_destroy(conn);
     }
     log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
 
     log_message(LOG_LEVEL_INFO, "buffer going for parse");
-    parse_request(conn->read_buff, strlen(conn->read_buff->data),&conn->req);
+    parse_request(conn->read_buff, conn->read_buff->len ,&conn->req);
 
     // log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
     // EventLoop_ModEvent(Lp,conn, EV_WRITABLE);

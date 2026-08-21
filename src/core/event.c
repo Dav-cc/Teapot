@@ -50,6 +50,7 @@ int EventLoop_ProcessEvents(EventLoop* el){
         if(nevent >= 0)break;
         if(nevent == -1){
             if(errno == EINTR){
+                // TODO: will be implemented soon .  . . .
                 log_message(LOG_LEVEL_WARN, "recived EINTR signal, but event loop continues");
                 if(!el->running) return 0;
                 continue;

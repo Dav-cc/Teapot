@@ -1,5 +1,6 @@
 #include "rb.h"
 #include "log.h"
+#include <asm-generic/errno.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/socket.h>
@@ -25,31 +26,56 @@ buffer_t* db_create(size_t size){
 }
 
 size_t db_socket_read(buffer_t *db, int fd){
-    if(db->cap - db->len < 4096) {
-        size_t new_cap = db->cap ? db->cap * 2 : 4096;
-        char* tmp = realloc(db->data, new_cap); 
-        if(!tmp){
-            log_message(LOG_LEVEL_ERROR, " can not realloc : %s ", strerror(errno));
-            return -1;
+    ssize_t total = 0;
+    while(1){
+        if(db->cap - db->len < 4096) {
+            size_t new_cap = db->cap ? db->cap * 2 : 4096;
+            char* tmp = realloc(db->data, new_cap); 
+            if(!tmp){
+                log_message(LOG_LEVEL_ERROR, " can not realloc : %s ", strerror(errno));
+                return -1;
+            }
+            db->data = tmp;
+            db->cap = new_cap;
         }
-        db->data = tmp;
-        db->cap = new_cap;
+        ssize_t readed = recv(fd, db->data + db->len, db->cap - db->len, 0);
+        if(readed > 0){
+            db->len += readed;
+            total += readed;
+            continue;
+        }
+        if(readed == 0){
+            return total ? total :0;
+        }
+        if(errno == EAGAIN || errno == EWOULDBLOCK){
+            break;
+        }
+        return -1;
     }
-    ssize_t readed = recv(fd, db->data + db->len, db->cap - db->len, 0);
-    if(readed > 0){
-        db->len += readed;
-    }
-    return readed;
+    log_message(LOG_LEVEL_INFO, "db is = %.*s", db->len, db->data);
+    return total;
 }
 size_t db_socket_write(buffer_t *db, int fd){
+    ssize_t total = 0;
     if(db->offset >= db->len){
             return 0;
     }
-    ssize_t n = send(fd, db->data + db->offset, db->len - db->offset, 0);
-    if (n > 0){
-      db->offset += n;
+    while(1){
+        ssize_t n = send(fd, db->data + db->offset, db->len - db->offset, 0);
+        if (n > 0){
+            db->offset += n;
+            total += n;
+            continue;
+        }
+        if(n == 0){
+            return total ? total :0;
+        }
+        if(errno == EAGAIN || errno == EWOULDBLOCK){
+            break;
+        }
+        return -1;
     }
-    return n;
+    return total;
 }
 
 size_t db_buff_append(buffer_t* buf, char* src, size_t size){
