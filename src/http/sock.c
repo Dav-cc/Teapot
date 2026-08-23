@@ -117,7 +117,9 @@ int read_handler(Connection* conn, void* Loop){
     log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
 
     log_message(LOG_LEVEL_INFO, "buffer going for parse");
-    parse_request(conn->read_buff, conn->read_buff->len ,&conn->req);
+    
+    // TODO: implement this correct
+    // parse_request(conn->read_buff, conn->read_buff->len ,&conn->req);
 
     // log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
     // EventLoop_ModEvent(Lp,conn, EV_WRITABLE);
