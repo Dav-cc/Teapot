@@ -3,21 +3,20 @@
 #include <string.h>
 #include <stdbool.h>
 
-static bool http_parser_parse_req_line(http_parser_t* p, buffer_t*b , size_t len){
-    // TODO:
+static bool http_parser_parse_req_line(http_parser_t* p, buffer_t* buf, size_t len){
+    char* ch;
+    int i=0;
+    while(ch[i] == '\r' && ch[i+1] == '\n'){
+        i++;
+        if(i >= len){
+            break;
+        }
+    }
 }
-static http_parser_result_t http_parser_parse_headers(http_parser_t* p, buffer_t*b , size_t len){
-    // TODO:
-}
-static http_parser_result_t http_parser_parse_body(http_parser_t* p, buffer_t*b , size_t len){
-    // TODO:
-}
-static http_parser_result_t http_parser_get_content_length(http_parser_t* p, buffer_t*b , size_t len){
-    // TODO:
-}
-static http_parser_result_t http_parser_get_header(http_parser_t* p, buffer_t*b , size_t len, const char* header_value){
-    // TODO:
-}
+
+
+
+
 
 http_parser_result_t http_parser_parse(http_parser_t* p, buffer_t* buf, size_t len, size_t* consumed){
     size_t start = p->bytes_consumed;

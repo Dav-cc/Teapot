@@ -44,14 +44,17 @@ typedef struct {
     size_t len;     // words length
 }http_slice_t;
 
-
+typedef struct {
+    http_slice_t key;
+    int value;
+}http_header_t;
 
 typedef struct{
     http_slice_t method;
     http_slice_t path;
     http_slice_t version;
 
-    http_slice_t headers [256];
+    http_header_t headers [256];
     size_t headers_count;
 
     http_slice_t body;
@@ -72,7 +75,5 @@ typedef struct {
 }http_parser_t;
 
 http_parser_result_t http_parser_parse(http_parser_t* p, buffer_t* buf, size_t len, size_t* consumed);
-
-// http_parser_result_t http_parser_parser_init(Connection* conn);
 
 #endif
