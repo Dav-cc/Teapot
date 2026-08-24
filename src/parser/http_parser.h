@@ -46,7 +46,7 @@ typedef struct {
 
 typedef struct {
     http_slice_t key;
-    int value;
+    http_slice_t value;
 }http_header_t;
 
 typedef struct{
@@ -75,5 +75,5 @@ typedef struct {
 }http_parser_t;
 
 http_parser_result_t http_parser_parse(http_parser_t* p, buffer_t* buf, size_t len, size_t* consumed);
-
+http_parser_t* http_parser_init();
 #endif
