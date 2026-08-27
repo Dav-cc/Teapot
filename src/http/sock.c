@@ -95,15 +95,17 @@ int write_handler(Connection *conn, void *Loop) {
         connection_destroy(conn);
         return -1;
     }
-        log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
-        EventLoop_ModEvent(Lp, conn, EV_READABLE);
+        // log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
+        // EventLoop_ModEvent(Lp, conn, EV_READABLE);
         return 0;
-    }
+}
 
 int read_handler(Connection* conn, void* Loop){
+    size_t consumed = 0;
     EventLoop* Lp = Loop;
     conn->state = CONN_READING;
     ssize_t readed = db_socket_read(conn->read_buff,conn->fd);
+    conn->rlen = readed;
     if(readed == 0){
         log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);
         EventLoop_DelEvent(Lp, conn);
@@ -114,13 +116,24 @@ int read_handler(Connection* conn, void* Loop){
         log_message(LOG_LEVEL_ERROR, "peer fd = %d errored sent no data", conn->fd);
         connection_destroy(conn);
     }
-    log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
+     log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
 
     log_message(LOG_LEVEL_INFO, "buffer going for parse");
-    parse_request(conn->read_buff, conn->read_buff->len ,&conn->req);
+    
+    // TODO: implement this correct
+    conn->rlen = conn->read_buff->len;
+        http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->rlen, &consumed);
+    
+    switch (res) {
+        case PARSER_RESULT_OK:
+            log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
+            EventLoop_ModEvent((EventLoop*)Loop, conn, EV_WRITABLE);
+        case PARSER_RESULT_NEED_MORE:
+            return 0;
+        // case PARSER_STATE_ERROR:
+            // ERROR: return error code 
+    }
 
-    // log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
-    // EventLoop_ModEvent(Lp,conn, EV_WRITABLE);
     return 0;
 }
 
