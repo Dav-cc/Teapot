@@ -34,7 +34,6 @@ struct Connection{
     connection_handler write_func;
     connection_handler read_func;
 
-    // http_request_t req;
 
     http_parser_state_t pstate;
     http_parser_t* parser;

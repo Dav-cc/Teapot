@@ -2,6 +2,7 @@
 #include "server.h"
 #include "../core/log.h"
 #include "../core/event.h"
+#include "../http/http_response.h"
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -127,11 +128,11 @@ int read_handler(Connection* conn, void* Loop){
     switch (res) {
         case PARSER_RESULT_OK:
             log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
-            EventLoop_ModEvent((EventLoop*)Loop, conn, EV_WRITABLE);
+            http_response_builder(conn->parser,&conn->parser->request, conn, Loop);
+            db_socket_write(conn->write_buff,conn->fd);
+            EventLoop_ModEvent(Loop, conn, EV_READABLE);
         case PARSER_RESULT_NEED_MORE:
             return 0;
-        // case PARSER_STATE_ERROR:
-            // ERROR: return error code 
     }
 
     return 0;
