@@ -95,10 +95,10 @@ int write_handler(Connection *conn, void *Loop) {
         connection_destroy(conn);
         return -1;
     }
-        log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
-        EventLoop_ModEvent(Lp, conn, EV_READABLE);
+        // log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
+        // EventLoop_ModEvent(Lp, conn, EV_READABLE);
         return 0;
-    }
+}
 
 int read_handler(Connection* conn, void* Loop){
     size_t consumed = 0;
@@ -116,17 +116,24 @@ int read_handler(Connection* conn, void* Loop){
         log_message(LOG_LEVEL_ERROR, "peer fd = %d errored sent no data", conn->fd);
         connection_destroy(conn);
     }
-    log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
+     log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
 
     log_message(LOG_LEVEL_INFO, "buffer going for parse");
     
     // TODO: implement this correct
-    while(conn->parser->state != PARSER_COMPLETE){
+    conn->rlen = conn->read_buff->len;
         http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->rlen, &consumed);
+    
+    switch (res) {
+        case PARSER_RESULT_OK:
+            log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
+            EventLoop_ModEvent((EventLoop*)Loop, conn, EV_WRITABLE);
+        case PARSER_RESULT_NEED_MORE:
+            return 0;
+        // case PARSER_STATE_ERROR:
+            // ERROR: return error code 
     }
 
-    // log_message(LOG_LEVEL_INFO, "changing fd mod to writeable");
-    // EventLoop_ModEvent(Lp,conn, EV_WRITABLE);
     return 0;
 }
 

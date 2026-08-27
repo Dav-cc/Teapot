@@ -44,12 +44,12 @@ static bool http_parser_parse_req_line(http_parser_t* p, buffer_t* buf, size_t l
 
     p->state = PARSER_STATE_HEADERS;
     p->bytes_consumed = ((end+1) - start) + 1; // +1 for \n in crlf
-    buf->data += p->bytes_consumed;
+    buf->offset += p->bytes_consumed;
     return true;
 }
 
 static bool http_parser_parse_headers(http_parser_t* p, buffer_t* buf, size_t len){
-    char* start = buf->data;
+    char* start = buf->data + buf->offset;
     while(p->bytes_consumed <= len){
         char* crlf = find_crlf(start, len - (start - buf->data));
         if(!crlf){
@@ -71,38 +71,36 @@ static bool http_parser_parse_headers(http_parser_t* p, buffer_t* buf, size_t le
         }
         p->request.headers[p->request.headers_count].value.data = value ;
         p->request.headers[p->request.headers_count].value.len = crlf - p->request.headers[p->request.headers_count].value.data ;
+        if((p->request.headers[p->request.headers_count].key.len == strlen("Content-Length")) && (strncasecmp(p->request.headers[p->request.headers_count].key.data
+                                                                                                            , "Content-Length",
+                                                                                                            p->request.headers[p->request.headers_count].key.len) == 0)){
+            p->request.content_length = atol(p->request.headers[p->request.headers_count].value.data);
+        }
         p->request.headers_count++;
         p->headers_consumed++;
         p->bytes_consumed = (crlf+2) - buf->data;
         start = crlf + 2;
     }
-    p->state = PARSER_STATE_BODY_CONTENT_LENGTH;
-    buf->data +=2; // for crlf
-    buf->data += p->bytes_consumed;
+    p->state = PARSER_STATE_BODY_PARSING;
+    buf->offset +=2; // for crlf
+    buf->offset += p->bytes_consumed;
     return true;
 }
 
-static http_header_t* http_parser_get_content_length(http_parser_t* p){
-    for(size_t i = 0; i < p->request.headers_count; i++) {
-        http_slice_t* key = &p->request.headers[i].key;
-        if(key->len == strlen("Content-Length") &&
-           strncasecmp(key->data,"Content-Length",key->len) == 0){
-            p->state = PARSER_STATE_BODY_PARSING;
-            return &p->request.headers[i];
-        }
-    }
-    return NULL;
-}
-
 static bool http_parser_parse_body(http_parser_t* p, buffer_t* buf, size_t len){
-    http_header_t* con_len = http_parser_get_content_length(p);
-    if(!con_len){
-        log_message(LOG_LEVEL_ERROR, "No content-length header in parsed headers");
-        return false;
+    if((strncmp(p->request.method.data, "GET", 3)) == 0){
+        log_message(LOG_LEVEL_INFO,"GET request, path : %.*s", p->request.path.len, p->request.path.data);
+        p->state = PARSER_COMPLETE;
+        return true;
     }
-    p->content_length = atoi(con_len->value.data);
+    if((strncmp(p->request.method.data, "POST", 4)) == 0){
+        log_message(LOG_LEVEL_INFO,"POST request, path : %.*s", p->request.path.len, p->request.path.data);
+        p->state = PARSER_COMPLETE;
+        return true;
+    }
 
-    char* body_content = buf->data;
+    // TODO: parse body
+    char* body_content = buf->data+buf->offset;
     p->state = PARSER_COMPLETE;
     return true;
 }
@@ -114,19 +112,19 @@ http_parser_result_t http_parser_parse(http_parser_t* p, buffer_t* buf, size_t l
             case PARSER_STATE_REQUEST_LINE:
                 if(!http_parser_parse_req_line(p, buf, len))
                     return PARSER_RESULT_NEED_MORE;
-                    break; 
+                break; 
             case PARSER_STATE_HEADERS :
                 if(!http_parser_parse_headers(p, buf, len))
                     return PARSER_RESULT_NEED_MORE;
-                    break; 
-            case PARSER_STATE_BODY_CONTENT_LENGTH: 
-                if(!http_parser_get_content_length(p))
-                    return PARSER_RESULT_NEED_MORE;
-                    break; 
+                break; 
+            // case PARSER_STATE_BODY_CONTENT_LENGTH: 
+            //     if(!http_parser_get_content_length(p))
+            //         return PARSER_RESULT_NEED_MORE;
+            //     break; 
             case PARSER_STATE_BODY_PARSING:
                 if(!http_parser_parse_body(p, buf, len))
                     return PARSER_RESULT_NEED_MORE;
-                    break; 
+                break; 
             case PARSER_COMPLETE:
                 *consumed = p->bytes_consumed - start;
                 return PARSER_RESULT_OK;
