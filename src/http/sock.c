@@ -75,16 +75,8 @@ int sock_set_nodelay(int fd) {
 int write_handler(Connection *conn, void *Loop) {
     EventLoop *Lp = Loop;
     conn->state = CONN_WRITING;
-    char *buffer = "HTTP/1.1 200 OK\r\n"
-                   "Content-Length: 17\r\n"
-                   "Connection: keep-alive\r\n"
-                   "\r\n"
-                   "hello from Teapot";
 
-    db_buff_append(conn->write_buff, buffer, strlen(buffer));
-
-    size_t writed = db_socket_write(conn->write_buff, conn->fd);
-
+    ssize_t writed = db_socket_write(conn->write_buff, conn->fd);
 
     if (writed == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -96,9 +88,21 @@ int write_handler(Connection *conn, void *Loop) {
         connection_destroy(conn);
         return -1;
     }
-        // log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
-        // EventLoop_ModEvent(Lp, conn, EV_READABLE);
-        return 0;
+
+    if (conn->write_buff->offset < conn->write_buff->len) {
+      EventLoop_ModEvent(Lp, conn, EV_WRITABLE);
+      return 0;
+    }
+
+    /* complete response sent */
+    conn->write_buff->offset = 0;
+    conn->write_buff->len = 0;
+
+    EventLoop_ModEvent(Lp, conn, EV_READABLE);
+
+    // log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
+    // EventLoop_ModEvent(Lp, conn, EV_READABLE);
+    // return 0;
 }
 
 int read_handler(Connection* conn, void* Loop){
@@ -123,14 +127,15 @@ int read_handler(Connection* conn, void* Loop){
     
     // TODO: implement this correct
     conn->rlen = conn->read_buff->len;
-        http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->rlen, &consumed);
-    
+    http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->rlen, &consumed);
+
     switch (res) {
         case PARSER_RESULT_OK:
             log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
             http_response_builder(conn->parser,&conn->parser->request, conn, Loop);
-            db_socket_write(conn->write_buff,conn->fd);
-            EventLoop_ModEvent(Loop, conn, EV_READABLE);
+            // db_socket_write(conn->write_buff,conn->fd);
+            return 0;
+        
         case PARSER_RESULT_NEED_MORE:
             return 0;
     }

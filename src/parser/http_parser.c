@@ -40,7 +40,7 @@ static bool http_parser_parse_req_line(http_parser_t* p, buffer_t* buf, size_t l
     p->request.path.len = space2 - (space1+1);
 
     p->request.version.data = space2 + 1;
-    p->request.version.len = end - (space2 - 1);
+    p->request.version.len = end - (space2 + 1);
 
     p->state = PARSER_STATE_HEADERS;
     p->bytes_consumed = ((end+1) - start) + 1; // +1 for \n in crlf
@@ -126,7 +126,7 @@ http_parser_result_t http_parser_parse(http_parser_t* p, buffer_t* buf, size_t l
                     return PARSER_RESULT_NEED_MORE;
                 break; 
             case PARSER_COMPLETE:
-                *consumed = p->bytes_consumed - start;
+                *consumed = p->bytes_consumed;
                 return PARSER_RESULT_OK;
                     break; 
             case PARSER_STATE_ERROR:

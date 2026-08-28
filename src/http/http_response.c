@@ -45,14 +45,17 @@ http_response_t* http_response_serializer(http_parser_t* p,http_request_t* req){
             res->headers_count = 2;
             res->reason = "OK";
             res->status = 200;
+            return res;
         }
-        return res;
+        res->status = 404;
+        res->reason = "Not Found";
     }
     if(http_slice_eq(req->method,"POST") == 0){
         if(http_slice_eq(req->path, "/echo")){
             // TODO: 
         }
     }
+        return res;
 }
 
 http_response_t* http_response_builder(http_parser_t*p, http_request_t* req, Connection* conn, EventLoop* loop){
