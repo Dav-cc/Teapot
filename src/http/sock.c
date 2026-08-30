@@ -84,13 +84,13 @@ int write_handler(Connection *conn, void *Loop) {
           return 0;
         }
         log_message(LOG_LEVEL_ERROR, "write error fd=%d : %s", conn->fd,strerror(errno));
-        EventLoop_DelEvent(Lp, conn);
+        eventloop_del_event(Lp, conn);
         connection_destroy(conn);
         return -1;
     }
 
     if (conn->write_buff->offset < conn->write_buff->len) {
-      EventLoop_ModEvent(Lp, conn, EV_WRITABLE);
+      eventloop_mod_event(Lp, conn, EV_WRITABLE);
       return 0;
     }
 
@@ -98,7 +98,7 @@ int write_handler(Connection *conn, void *Loop) {
     conn->write_buff->offset = 0;
     conn->write_buff->len = 0;
 
-    EventLoop_ModEvent(Lp, conn, EV_READABLE);
+    eventloop_mod_event(Lp, conn, EV_READABLE);
 
     // log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
     // EventLoop_ModEvent(Lp, conn, EV_READABLE);
@@ -113,7 +113,7 @@ int read_handler(Connection* conn, void* Loop){
     conn->rlen = readed;
     if(readed == 0){
         log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);
-        EventLoop_DelEvent(Lp, conn);
+        eventloop_del_event(Lp, conn);
         connection_destroy(conn);
         return -1;
     }

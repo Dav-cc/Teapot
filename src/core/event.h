@@ -44,12 +44,12 @@ typedef struct EventLoop {
     FileEvent* ev;
 }EventLoop;
 
-int EventLoop_ProcessEvents(EventLoop* el);
-void RunEventLoop(EventLoop* el);
-EventLoop* create_EventLoop(int events_size);
-int EventLoop_DelEvent(EventLoop* el, Connection* conn);
-int EventLoop_ModEvent(EventLoop* el, Connection* conn, int flags);
-int EventLoop_AddEvent(EventLoop* el, Connection* conn, int flags);
-void EventLoop_Destroy(EventLoop* el);
+int eventloop_process_events(EventLoop* el);
+void eventloop_run(EventLoop* el);
+EventLoop* eventloop_create(int events_size);
+int eventloop_del_event(EventLoop* el, Connection* conn);
+int eventloop_mod_event(EventLoop* el, Connection* conn, int flags);
+int eventloop_add_event(EventLoop* el, Connection* conn, int flags);
+void eventLoop_destroy(EventLoop* el);
 
 #endif  // __EVENT_H__

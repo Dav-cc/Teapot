@@ -70,9 +70,9 @@ int init_tcp_server(int port){
         return -1;
     }
     Connection* listen_conn = connection_creat(listenfd, 1, acceptor, NULL,NULL);
-    EventLoop* loop = create_EventLoop(1024);
-    EventLoop_AddEvent(loop, listen_conn, EV_READABLE);
-    RunEventLoop(loop);
+    EventLoop* loop = eventloop_create(1024);
+    eventloop_add_event(loop, listen_conn, EV_READABLE);
+    eventloop_run(loop);
     return 0;
 }
 
@@ -92,7 +92,7 @@ int accept_handler(Connection* conn, void* Loop){
         }
         sock_set_keep_alive(afd);
         Connection* accept_conn = connection_creat(afd, 0, NULL, read_handle, write_handle);
-        int res = EventLoop_AddEvent(Lp, accept_conn , EV_READABLE);
+        int res = eventloop_add_event(Lp, accept_conn , EV_READABLE);
     }
     return 0;
 }

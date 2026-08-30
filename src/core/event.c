@@ -6,7 +6,7 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
-EventLoop* create_EventLoop(int events_size){
+EventLoop* eventloop_create(int events_size){
     EventLoop* el = calloc(1,sizeof(EventLoop));
     if(!el){
         log_message(LOG_LEVEL_ERROR,"malloc faild : %s", strerror(errno));
@@ -43,7 +43,7 @@ EventLoop* create_EventLoop(int events_size){
     return el;
 }
 
-int EventLoop_ProcessEvents(EventLoop* el){
+int eventloop_Process_events(EventLoop* el){
     int en, filed;
     int nevent = 0;
     while((nevent = epoll_wait(el->state.epollfd, el->state.events, el->setsize, -1)) == -1){
@@ -95,7 +95,7 @@ int EventLoop_ProcessEvents(EventLoop* el){
     return en;
 }
 
-int EventLoop_AddEvent(EventLoop* el, Connection* conn , int flags){
+int eventloop_add_event(EventLoop* el, Connection* conn , int flags){
     struct epoll_event ee = {0};
 
     if(el->setsize <= conn->fd ){ 
@@ -125,7 +125,7 @@ int EventLoop_AddEvent(EventLoop* el, Connection* conn , int flags){
     return 0;
 }
 
-int EventLoop_ModEvent(EventLoop* el, Connection* conn, int flag){
+int eventloop_mod_event(EventLoop* el, Connection* conn, int flag){
     struct epoll_event ee = {0};
     int op = EPOLL_CTL_MOD;
 
@@ -144,7 +144,7 @@ int EventLoop_ModEvent(EventLoop* el, Connection* conn, int flag){
     return 0;
 }
 
-int EventLoop_DelEvent(EventLoop* el, Connection* conn){
+int eventloop_del_event(EventLoop* el, Connection* conn){
     int res = epoll_ctl(el->state.epollfd, EPOLL_CTL_DEL, conn->fd, NULL);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in epoll_ctl : %s", strerror(errno));
@@ -159,15 +159,15 @@ int EventLoop_DelEvent(EventLoop* el, Connection* conn){
     return 0;
 }
 
-void RunEventLoop(EventLoop* el){
+void eventloop_run(EventLoop* el){
     el->running = 1;
     log_message(LOG_LEVEL_INFO, "entring event loop . . . ");
     while(el->running){
-        EventLoop_ProcessEvents(el);
+        eventloop_Process_events(el);
     }
 }
 
-void EventLoop_Destroy(EventLoop* el) {
+void eventloop_destroy(EventLoop* el) {
     if(!el) return ;
     if (el->ev) free(el->ev);
     if (el->fired) free(el->fired);
