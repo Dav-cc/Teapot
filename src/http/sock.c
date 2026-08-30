@@ -120,6 +120,7 @@ int read_handler(Connection* conn, void* Loop){
     if(readed == -1){
         log_message(LOG_LEVEL_ERROR, "peer fd = %d errored sent no data", conn->fd);
         connection_destroy(conn);
+        return -1;
     }
      log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
 

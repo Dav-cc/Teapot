@@ -106,18 +106,6 @@ int EventLoop_AddEvent(EventLoop* el, Connection* conn , int flags){
     fe = &el->ev[conn->fd];
     fe->conn = conn;
 
-    //comented this
-    // if(conn->read_func)
-    //     fe->conn->read_func = conn->read_func;
-    //
-    // if(conn->write_func)
-    //     fe->conn->write_func = conn->write_func;
-    //
-    // if(conn->accept_func)
-    //     fe->conn->accept_func = conn->accept_func;
-    // fe->accept_func = accept_func;
-    // fe->read_func = read_func;
-    // fe->write_func = write_func;
     int op = el->ev[conn->fd].mask == EV_NULL ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
     fe->mask |= flags;
     ee.data.fd = conn->fd;

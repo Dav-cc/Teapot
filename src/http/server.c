@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include "../parser/http_parser.h"
 
 
 Connection* connection_creat(int fd, int is_listener, connection_handler acc, connection_handler readd, connection_handler writee){
@@ -21,6 +22,7 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
     if(!conn->read_buff){
         log_message(LOG_LEVEL_ERROR,"error in creating read buffer, %s ", strerror(errno));
         free(conn);
+        return NULL;
     }
     conn->write_buff = db_create(2048);
     if(!conn->write_buff){
@@ -54,6 +56,7 @@ int connection_destroy(Connection* conn){
     log_message(LOG_LEVEL_INFO,"Closing connecting- fd = %d, ", conn->fd);
     db_destroy(conn->read_buff);
     db_destroy(conn->write_buff);
+    free(conn->parser);
     close(conn->fd);
     free(conn);
     return 0;
