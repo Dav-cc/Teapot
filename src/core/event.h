@@ -1,55 +1,55 @@
-#ifndef __EVENT_H__
-#define __EVENT_H__
-
+#ifndef TEVENTLOOP_H
+#define TEVENTLOOP_H
+#include <stdint.h>
 #include <sys/epoll.h>
 #include "../http/server.h"
 
-#define EVENTS_SIZE 1024
+typedef struct EventLoop EventLoop;
+typedef struct FileEvent FileEvent;
 
-#define EV_EPOLLRDHUP  4
-#define EV_ERROR       8
-#define EV_READABLE    2
-#define EV_WRITABLE    1
-#define EV_NULL        0 // not registerd events
+
+typedef void (*event_callback)(EventLoop *loop, FileEvent *event);
+
+typedef struct Event_Callback{
+    event_callback on_read;
+    event_callback on_write;
+    event_callback on_error;
+}Event_Callback;
 
 typedef struct FileEvent{
-    int fd;
-    int mask;
-    Connection* conn;  // handlers moved in this struct
-    // connection_handler accept_func;
-    // connection_handler write_func;
-    // connection_handler read_func;
-}FileEvent;
+    int fd;         // this filed used for file descriptore
+                    // and in default value it's -1 on init
 
-typedef struct FiredEvent {
-    int fd;
-    int flags;
-    Connection* conn;  // handlers moved in this struct
-    // connection_handler accept_func;
-    // connection_handler write_func;
-    // connection_handler read_func;
-}FiredEvent;
+    uint32_t mask;   // 32 bit mask for tracking events state like (read/writabl)
+
+    Event_Callback callbacks;
+
+    void* data;     // this well be used for keeping events object (like Connection
+                    // for client/server sockets, or timer fd)
+}FileEvent;
 
 typedef struct Eventstate{
     int epollfd;
-    struct epoll_event events[EVENTS_SIZE];
-}Eventstate;
+    struct epoll_event *events;  // allocation in eventloop_create based on max_event_set
+}Epoll_Watcher;
 
 typedef struct EventLoop {
-    int running;
-    int nevents;
-    int setsize;
-    Eventstate state;
-    FiredEvent* fired;
-    FileEvent* ev;
+    int running;             // if event loop running 1 if stopped 0
+
+    int max_fds;             // maxmun number of events that we track with epoll
+
+    Epoll_Watcher state;     // holds epoll things
+
+    FileEvent* ev;           // max number of ev's we created based on max_event_set
 }EventLoop;
+
+
 
 int eventloop_process_events(EventLoop* el);
 void eventloop_run(EventLoop* el);
-EventLoop* eventloop_create(int events_size);
-int eventloop_del_event(EventLoop* el, Connection* conn);
-int eventloop_mod_event(EventLoop* el, Connection* conn, int flags);
-int eventloop_add_event(EventLoop* el, Connection* conn, int flags);
+EventLoop* eventloop_create(int max_fds);
+int eventloop_del_event(EventLoop* el, void* data);
+int eventloop_mod_event(EventLoop* el, void* data, int flags);
+int eventloop_add_event(EventLoop* el, void* data, int flags);
 void eventLoop_destroy(EventLoop* el);
-
-#endif  // __EVENT_H__
+#endif  //TEVENTLOOP_H
