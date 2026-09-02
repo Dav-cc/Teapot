@@ -2,13 +2,18 @@
 #define TEVENTLOOP_H
 #include <stdint.h>
 #include <sys/epoll.h>
-#include "../http/server.h"
+
+
+#define EV_READABLE   (1 << 0)
+#define EV_WRITABLE   (1 << 1)
+#define EV_NULL       (1 << 2)
+
 
 typedef struct EventLoop EventLoop;
 typedef struct FileEvent FileEvent;
 
 
-typedef void (*event_callback)(EventLoop *loop, FileEvent *event);
+typedef int (*event_callback)(EventLoop *loop, FileEvent *event);
 
 typedef struct Event_Callback{
     event_callback on_read;
@@ -44,12 +49,11 @@ typedef struct EventLoop {
 }EventLoop;
 
 
-
 int eventloop_process_events(EventLoop* el);
 void eventloop_run(EventLoop* el);
 EventLoop* eventloop_create(int max_fds);
-int eventloop_del_event(EventLoop* el, void* data);
-int eventloop_mod_event(EventLoop* el, void* data, int flags);
-int eventloop_add_event(EventLoop* el, void* data, int flags);
+int eventloop_del_event(EventLoop* el, FileEvent* fe);
+int eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flags);
+int eventloop_add_event(EventLoop* el, FileEvent* fe);
 void eventLoop_destroy(EventLoop* el);
 #endif  //TEVENTLOOP_H

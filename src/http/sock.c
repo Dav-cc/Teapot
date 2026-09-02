@@ -72,8 +72,9 @@ int sock_set_nodelay(int fd) {
     return 1;
 }
 
-int write_handler(Connection *conn, void *Loop) {
-    EventLoop *Lp = Loop;
+int write_handler(EventLoop *loop, FileEvent *fe) {
+    EventLoop *Lp = loop;
+    Connection* conn = fe->data;
     conn->state = CONN_WRITING;
 
     ssize_t writed = db_socket_write(conn->write_buff, conn->fd);
@@ -84,13 +85,13 @@ int write_handler(Connection *conn, void *Loop) {
           return 0;
         }
         log_message(LOG_LEVEL_ERROR, "write error fd=%d : %s", conn->fd,strerror(errno));
-        eventloop_del_event(Lp, conn);
+        eventloop_del_event(Lp, fe);
         connection_destroy(conn);
         return -1;
     }
 
     if (conn->write_buff->offset < conn->write_buff->len) {
-      eventloop_mod_event(Lp, conn, EV_WRITABLE);
+      eventloop_mod_event(Lp, fe, EV_WRITABLE);
       return 0;
     }
 
@@ -98,22 +99,23 @@ int write_handler(Connection *conn, void *Loop) {
     conn->write_buff->offset = 0;
     conn->write_buff->len = 0;
 
-    eventloop_mod_event(Lp, conn, EV_READABLE);
+    eventloop_mod_event(Lp, fe, EV_READABLE);
 
     // log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
     // EventLoop_ModEvent(Lp, conn, EV_READABLE);
     // return 0;
 }
 
-int read_handler(Connection* conn, void* Loop){
+int read_handler(EventLoop* loop, FileEvent* fe){
     size_t consumed = 0;
-    EventLoop* Lp = Loop;
+    EventLoop* Lp = loop;
+    Connection* conn = fe->data;
     conn->state = CONN_READING;
     ssize_t readed = db_socket_read(conn->read_buff,conn->fd);
     conn->rlen = readed;
     if(readed == 0){
         log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);
-        eventloop_del_event(Lp, conn);
+        eventloop_del_event(Lp, fe);
         connection_destroy(conn);
         return -1;
     }
@@ -133,7 +135,7 @@ int read_handler(Connection* conn, void* Loop){
     switch (res) {
         case PARSER_RESULT_OK:
             log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
-            http_response_builder(conn->parser,&conn->parser->request, conn, Loop);
+            http_response_builder(conn->parser, &conn->parser->request, conn, loop);
             // db_socket_write(conn->write_buff,conn->fd);
             return 0;
         

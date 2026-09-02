@@ -12,7 +12,7 @@
 #include "../parser/http_parser.h"
 
 
-Connection* connection_creat(int fd, int is_listener, connection_handler acc, connection_handler readd, connection_handler writee){
+Connection* connection_creat(int fd,int is_listener, event_callback readd, event_callback writee){
     Connection* conn = calloc(1, sizeof(Connection));
     if(!conn){
         log_message(LOG_LEVEL_ERROR, "error in calloc() for conn : %s", strerror(errno));
@@ -40,15 +40,17 @@ Connection* connection_creat(int fd, int is_listener, connection_handler acc, co
         free(conn);
         return NULL;
     }
-
-    conn->parser->state = PARSER_STATE_REQUEST_LINE;
     conn->fd = fd;
+    conn->filev.mask = EV_READABLE;
+    conn->parser->state = PARSER_STATE_REQUEST_LINE;
+    conn->filev.fd = conn->fd;
     conn->rlen = 0;
     conn->wlen = 0;
     conn->keep_alive = 1;
-    conn->accept_func= acc;
-    conn->read_func = readd;
-    conn->write_func = writee;
+    conn->filev.callbacks.on_read = readd;
+    conn->filev.callbacks.on_write = writee;
+    conn->filev.data = conn;
+
     if(is_listener) conn->listener = 1;
     return conn;
 }
@@ -63,36 +65,44 @@ int connection_destroy(Connection* conn){
 }
 
 int init_tcp_server(int port){
-    connection_handler acceptor = &accept_handler;
-    int listenfd = init_listen_socket(port);
+    int listenfd= init_listen_socket(port);
     if(listenfd == -1){
         log_message(LOG_LEVEL_ERROR, "error in running server");
         return -1;
     }
-    Connection* listen_conn = connection_creat(listenfd, 1, acceptor, NULL,NULL);
+    Connection* listen_conn = connection_creat(listenfd, 1, NULL,NULL);
     EventLoop* loop = eventloop_create(1024);
-    eventloop_add_event(loop, listen_conn, EV_READABLE);
+
+    listen_conn->filev.callbacks.on_read = accept_handler;
+    listen_conn->filev.mask = EV_READABLE;
+    listen_conn->filev.fd = listen_conn->fd;
+    
+    eventloop_add_event(loop, &listen_conn->filev);
     eventloop_run(loop);
     return 0;
 }
 
-int accept_handler(Connection* conn, void* Loop){
-    EventLoop* Lp = Loop;
-    connection_handler read_handle = &read_handler;
-    connection_handler write_handle = &write_handler;
-    struct sockaddr_in addr;
-    for(;;){
-        socklen_t socketlen = sizeof(addr);
-        int afd = accept4(conn->fd, (struct sockaddr*)&addr, &socketlen, SOCK_NONBLOCK|SOCK_CLOEXEC);
-        if(afd == -1){
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                break;
-            log_message(LOG_LEVEL_ERROR, "error in accept() : %s", strerror(errno));
-            return -1;
-        }
-        sock_set_keep_alive(afd);
-        Connection* accept_conn = connection_creat(afd, 0, NULL, read_handle, write_handle);
-        int res = eventloop_add_event(Lp, accept_conn , EV_READABLE);
+int accept_handler(EventLoop *loop, FileEvent *fe) {
+  struct sockaddr_in addr;
+  for (;;) {
+    socklen_t socketlen = sizeof(addr);
+    int afd = accept4(fe->fd, (struct sockaddr *)&addr, &socketlen,
+                      SOCK_NONBLOCK | SOCK_CLOEXEC);
+    if (afd == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+        break;
+      log_message(LOG_LEVEL_ERROR, "error in accept() : %s", strerror(errno));
+      return -1;
     }
-    return 0;
+    sock_set_keep_alive(afd);
+    Connection *accept_conn = connection_creat(afd, 0, read_handler, write_handler);
+    if(!accept_conn){
+        close(afd);
+        continue;
+    }
+    accept_conn->filev.mask = EV_READABLE;
+    accept_conn->filev.data = accept_conn;
+    eventloop_add_event(loop, &accept_conn->filev);
+  }
+  return 0;
 }

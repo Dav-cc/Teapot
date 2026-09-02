@@ -3,6 +3,7 @@
 
 #include "../parser/http_parser.h"
 #include "../core/event.h"
+#include "../http/server.h"
 
 typedef struct {
     int status;
