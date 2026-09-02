@@ -81,6 +81,9 @@ int eventloop_add_event(EventLoop* el, FileEvent* fe){
     struct epoll_event ee = {0};
     ee.data.ptr = fe;
 
+    if (fe->mask & EV_ET)
+        ee.events |= EPOLLET;
+
     if (fe->mask & EV_READABLE)
         ee.events |= EPOLLIN;
 

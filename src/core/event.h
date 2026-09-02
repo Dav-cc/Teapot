@@ -6,7 +6,7 @@
 
 #define EV_READABLE   (1 << 0)
 #define EV_WRITABLE   (1 << 1)
-#define EV_NULL       (1 << 2)
+#define EV_ET         (1 << 2)
 
 
 typedef struct EventLoop EventLoop;

@@ -41,7 +41,7 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
         return NULL;
     }
     conn->fd = fd;
-    conn->filev.mask = EV_READABLE;
+    conn->filev.mask = EV_READABLE | EV_ET;
     conn->parser->state = PARSER_STATE_REQUEST_LINE;
     conn->filev.fd = conn->fd;
     conn->rlen = 0;
@@ -74,7 +74,7 @@ int init_tcp_server(int port){
     EventLoop* loop = eventloop_create(1024);
 
     listen_conn->filev.callbacks.on_read = accept_handler;
-    listen_conn->filev.mask = EV_READABLE;
+    listen_conn->filev.mask = EV_READABLE | EV_ET;
     listen_conn->filev.fd = listen_conn->fd;
     
     eventloop_add_event(loop, &listen_conn->filev);
@@ -100,7 +100,7 @@ int accept_handler(EventLoop *loop, FileEvent *fe) {
         close(afd);
         continue;
     }
-    accept_conn->filev.mask = EV_READABLE;
+    accept_conn->filev.mask = EV_READABLE | EV_ET;
     accept_conn->filev.data = accept_conn;
     eventloop_add_event(loop, &accept_conn->filev);
   }
