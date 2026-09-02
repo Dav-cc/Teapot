@@ -33,7 +33,7 @@ EventLoop* eventloop_create(int max_fds){
     return el;
 }
 
-int eventloop_Process_events(EventLoop* el){
+EventError eventloop_Process_events(EventLoop* el){
     int num_events = 0;
     // TODO: add TIMER support and ONESHOT
     num_events = epoll_wait(el->state.epollfd, el->state.events, el->max_fds, -1);
@@ -41,11 +41,11 @@ int eventloop_Process_events(EventLoop* el){
             if(errno == EINTR){
                 // TODO: implement gracefull shutdown
                 log_message(LOG_LEVEL_WARN, "recived EINTR signal, stopping . . .\n");
-                return -1;
+                return LOOP_SIGNAL;
             }
 
             log_message(LOG_LEVEL_ERROR,"epoll wait returned -1 : %s", strerror(errno));
-            return -1;
+            return LOOP_FD_NOT_VALID;
         }
  
     for (int i = 0; i< num_events; i++){
@@ -70,13 +70,13 @@ int eventloop_Process_events(EventLoop* el){
             }
         }
     }
-    return num_events;
+    return LOOP_OK;
 }
 
-int eventloop_add_event(EventLoop* el, FileEvent* fe){
+EventError eventloop_add_event(EventLoop* el, FileEvent* fe){
     if(fe->fd >= el->max_fds){
         log_message(LOG_LEVEL_ERROR, "given fd is bigger than max fd");
-        return -1;
+        return LOOP_FD_NOT_VALID;
     }
     struct epoll_event ee = {0};
     ee.data.ptr = fe;
@@ -92,12 +92,12 @@ int eventloop_add_event(EventLoop* el, FileEvent* fe){
 
     if((epoll_ctl(el->state.epollfd,EPOLL_CTL_ADD, fe->fd,&ee)) == -1){
         log_message(LOG_LEVEL_ERROR, "Falied to ADD fd to epoll");
-        return -1;
+        return LOOP_CTL_ERROR;
     }
     return 0;
 }
 
-int eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flag){
+EventError eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flag){
     struct epoll_event ee= {0};
     ee.data.ptr = fe;
     ee.events = 0;
@@ -108,16 +108,20 @@ int eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flag){
     if(flag & EV_WRITABLE){
         ee.events |= EPOLLOUT;
     }
-    return epoll_ctl(el->state.epollfd, EPOLL_CTL_MOD, fe->fd, &ee);
+    if((epoll_ctl(el->state.epollfd,EPOLL_CTL_ADD, fe->fd,&ee)) == -1){
+        log_message(LOG_LEVEL_ERROR, "Falied to ADD fd to epoll");
+        return LOOP_CTL_ERROR;
+    }
+    return LOOP_OK;
 }
 
-int eventloop_del_event(EventLoop* el, FileEvent* fe){
+EventError eventloop_del_event(EventLoop* el, FileEvent* fe){
     int res = epoll_ctl(el->state.epollfd, EPOLL_CTL_DEL, fe->fd, NULL);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "error in deleting fe->fd:%d : %s",fe->fd, strerror(errno));
-        return -1;
+        return LOOP_CTL_ERROR;
     }
-    return 0;
+    return LOOP_OK;
 }
 
 void eventloop_run(EventLoop* el){

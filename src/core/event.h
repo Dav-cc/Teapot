@@ -48,12 +48,20 @@ typedef struct EventLoop {
     FileEvent* ev;           // max number of ev's we created based on max_event_set
 }EventLoop;
 
+typedef enum EventError{
+    LOOP_OK = 0, 
+    LOOP_NO_SPACE = -1,
+    LOOP_EPOLL_ERROR = -2,
+    LOOP_FD_NOT_VALID = -3,
+    LOOP_CTL_ERROR = -4,
+    LOOP_SIGNAL = -5,
+}EventError;
 
-int eventloop_process_events(EventLoop* el);
+EventError eventloop_process_events(EventLoop* el);
 void eventloop_run(EventLoop* el);
 EventLoop* eventloop_create(int max_fds);
-int eventloop_del_event(EventLoop* el, FileEvent* fe);
-int eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flags);
-int eventloop_add_event(EventLoop* el, FileEvent* fe);
+EventError eventloop_del_event(EventLoop* el, FileEvent* fe);
+EventError eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flags);
+EventError eventloop_add_event(EventLoop* el, FileEvent* fe);
 void eventLoop_destroy(EventLoop* el);
 #endif  //TEVENTLOOP_H
