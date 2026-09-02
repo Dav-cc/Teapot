@@ -100,6 +100,6 @@ http_response_t* http_response_builder(http_parser_t*p, http_request_t* req, Con
         wb->len += res->body_len;
     }
     log_message(LOG_LEVEL_INFO,"this buffer going for sending \n%.*s",conn->write_buff->len, conn->write_buff->data);
-    eventloop_mod_event(loop, conn, EV_WRITABLE);
+    eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
     return res;
 }
