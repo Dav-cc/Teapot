@@ -5,7 +5,7 @@ A lightweight, event-driven HTTP server written in C for Linux. Built as an educ
 ## Features
 
 - Single-threaded event loop built on Linux `epoll`
-- Non-blocking sockets with level-triggered events
+- Non-blocking sockets with edge-triggered events
 - Incremental HTTP/1.1 request parser
 - Per-connection read and write buffers backed by a dynamic buffer
 - Keep-alive connection handling

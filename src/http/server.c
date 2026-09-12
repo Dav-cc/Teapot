@@ -18,13 +18,13 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
         log_message(LOG_LEVEL_ERROR, "error in calloc() for conn : %s", strerror(errno));
         return NULL;
     }
-    conn->read_buff = db_create(2048);
+    conn->read_buff = dbuff_create(2048);
     if(!conn->read_buff){
         log_message(LOG_LEVEL_ERROR,"error in creating read buffer, %s ", strerror(errno));
         free(conn);
         return NULL;
     }
-    conn->write_buff = db_create(2048);
+    conn->write_buff = dbuff_create(2048);
     if(!conn->write_buff){
         log_message(LOG_LEVEL_ERROR,"error in creating write buffer, %s ", strerror(errno));
         free(conn->read_buff);
@@ -44,8 +44,6 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
     conn->filev.mask = EV_READABLE | EV_ET;
     conn->parser->state = PARSER_STATE_REQUEST_LINE;
     conn->filev.fd = conn->fd;
-    conn->rlen = 0;
-    conn->wlen = 0;
     conn->keep_alive = 1;
     conn->filev.callbacks.on_read = readd;
     conn->filev.callbacks.on_write = writee;
@@ -56,8 +54,8 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
 }
 int connection_destroy(Connection* conn){
     log_message(LOG_LEVEL_INFO,"Closing connecting- fd = %d, ", conn->fd);
-    db_destroy(conn->read_buff);
-    db_destroy(conn->write_buff);
+    dbuff_destroy(conn->read_buff);
+    dbuff_destroy(conn->write_buff);
     free(conn->parser);
     close(conn->fd);
     free(conn);

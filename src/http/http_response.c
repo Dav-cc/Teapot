@@ -63,7 +63,7 @@ http_response_t* http_response_builder(http_parser_t*p, http_request_t* req, Con
     if (!res) {
       return NULL;
     }
-    buffer_t *wb = conn->write_buff;
+    dbuffer *wb = conn->write_buff;
 
     wb->len = 0;
     wb->offset = 0;

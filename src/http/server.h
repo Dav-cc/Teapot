@@ -3,7 +3,7 @@
 
 #include "../core/event.h"
 #include "../parser/http_parser.h"
-#include "../core/rb.h"
+#include "../core/dbuff.h"
 
 typedef struct Connection Connection;
 
@@ -21,15 +21,13 @@ struct Connection{
     int fd;
     int listener;
 
-    int rlen;
-    int wlen;
 
     int keep_alive;
 
     conn_state state; 
 
-    buffer_t* read_buff;
-    buffer_t* write_buff;
+    dbuffer* read_buff;
+    dbuffer* write_buff;
 
     FileEvent filev;
     // connection_handler accept_func;

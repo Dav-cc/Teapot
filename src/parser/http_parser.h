@@ -2,7 +2,7 @@
 #define TEAPOT_PARSER_H
 
 #include "../core/log.h"
-#include "../core/rb.h"
+#include "../core/dbuff.h"
 #include <stddef.h>
 
 typedef enum {
@@ -74,6 +74,6 @@ typedef struct {
     http_request_t request;  // building request
 }http_parser_t;
 
-http_parser_result_t http_parser_parse(http_parser_t* p, buffer_t* buf, size_t len, size_t* consumed);
+http_parser_result_t http_parser_parse(http_parser_t* p, dbuffer* buf, size_t len, size_t* consumed);
 http_parser_t* http_parser_init();
 #endif
