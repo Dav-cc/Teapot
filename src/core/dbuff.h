@@ -10,10 +10,17 @@ typedef struct {
     size_t offset;     // where we are at current momment in buffer (for parsing , read/write  etc . . . )
 } dbuffer;
 
+typedef enum{
+    IO_OK = 0,
+    IO_ERROR = 1,
+    IO_AGAIN = 2,
+    IO_CLOSED = 3,
+}io_err;
+
 dbuffer* dbuff_create(size_t cap);
 void dbuff_destroy(dbuffer* buf);
-size_t dbuff_read(dbuffer* buf, int fd);
-size_t dbuff_write(dbuffer* buf ,int fd);
-size_t dbuff_append(dbuffer* buf, char* ch);
+io_err dbuff_read(dbuffer* buf, int fd);
+io_err dbuff_write(dbuffer* buf ,int fd);
+io_err dbuff_append(dbuffer* buf, char* ch);
 
 #endif

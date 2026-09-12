@@ -27,7 +27,7 @@ dbuffer* dbuff_create(size_t cap){
     return buffer;
 }
 
-size_t dbuff_read(dbuffer* buf, int fd){
+io_err dbuff_read(dbuffer* buf, int fd){
     while(1){
         if(buf->cap - buf->len <= 2048){
             ssize_t new_cap = buf->cap * 2;
@@ -36,7 +36,7 @@ size_t dbuff_read(dbuffer* buf, int fd){
                 log_message(LOG_LEVEL_ERROR, "error in allocation : %s", strerror(errno));
                 free(buf->data);
                 free(buf);
-                return -1;
+                return IO_ERROR;
             }
             buf->data = tmp;
             buf->cap = new_cap;
@@ -49,7 +49,7 @@ size_t dbuff_read(dbuffer* buf, int fd){
 
         if(rd_bytes == -1){  // we sould check errno value
             if(errno == EWOULDBLOCK || errno == EAGAIN){
-                break;
+                return IO_AGAIN;
             }
             if(errno == EINTR){
                 continue;
@@ -58,13 +58,14 @@ size_t dbuff_read(dbuffer* buf, int fd){
         if(rd_bytes == 0){  // peer closed connection 
             // TODO: handle closing connection here
             log_message(LOG_LEVEL_INFO," peer closed connection");
-            return -1;
+            return IO_CLOSED;
         }
+        return IO_ERROR;
     }
-    return buf->len;
+    return IO_OK;
 }
 
-size_t dbuff_write(dbuffer* buf, int fd){
+io_err dbuff_write(dbuffer* buf, int fd){
     while(buf->len > buf->offset){
         int wt_bytes = write(fd, buf->data + buf->offset, buf->len - buf->offset);
         buf->offset += wt_bytes;
@@ -74,12 +75,13 @@ size_t dbuff_write(dbuffer* buf, int fd){
         }
 
         if(wt_bytes == -1){
-            if(errno == EWOULDBLOCK || errno == EAGAIN)
-                break;
+            if(errno == EWOULDBLOCK || errno == EAGAIN){
+                return IO_AGAIN;
+            }
         }
-        return -1;
+        return IO_ERROR;
     }
-    return buf->offset;
+    return IO_OK;
 }
 
 
