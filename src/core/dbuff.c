@@ -21,7 +21,6 @@ dbuffer* dbuff_create(size_t cap){
     }
     buffer->cap = cap;
     buffer->len = 0;
-    buffer->data = NULL;
     buffer->offset = 0;
 
     return buffer;
@@ -67,7 +66,9 @@ io_err dbuff_read(dbuffer* buf, int fd){
 io_err dbuff_write(dbuffer* buf, int fd){
     while(buf->len > buf->offset){
         int wt_bytes = write(fd, buf->data + buf->offset, buf->len - buf->offset);
-
+        log_message(LOG_LEVEL_INFO,
+                    "send() returned %zd, errno=%d, len=%zu, offset=%zu", wt_bytes,
+                    errno, buf->len, buf->offset);
         if(wt_bytes > 0){
             buf->offset += wt_bytes;
             continue;

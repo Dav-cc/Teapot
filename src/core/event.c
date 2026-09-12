@@ -91,7 +91,7 @@ EventError eventloop_add_event(EventLoop* el, FileEvent* fe){
         ee.events |= EPOLLOUT;
 
     if((epoll_ctl(el->state.epollfd,EPOLL_CTL_ADD, fe->fd,&ee)) == -1){
-        log_message(LOG_LEVEL_ERROR, "Falied to ADD fd to epoll");
+        log_message(LOG_LEVEL_ERROR, "Falied to ADD fd to epoll, add");
         return LOOP_CTL_ERROR;
     }
     return 0;
@@ -108,8 +108,8 @@ EventError eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flag){
     if(flag & EV_WRITABLE){
         ee.events |= EPOLLOUT;
     }
-    if((epoll_ctl(el->state.epollfd,EPOLL_CTL_ADD, fe->fd,&ee)) == -1){
-        log_message(LOG_LEVEL_ERROR, "Falied to ADD fd to epoll");
+    if((epoll_ctl(el->state.epollfd,EPOLL_CTL_MOD, fe->fd,&ee)) == -1){
+        log_message(LOG_LEVEL_ERROR, "Falied to ADD fd to epoll, mod");
         return LOOP_CTL_ERROR;
     }
     return LOOP_OK;

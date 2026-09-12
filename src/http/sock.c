@@ -75,6 +75,8 @@ int sock_set_nodelay(int fd) {
 int write_handler(EventLoop *loop, FileEvent *fe) {
     Connection* conn = fe->data;
     conn->state = CONN_WRITING;
+    log_message(LOG_LEVEL_INFO, "WRITE EVENT fd=%d len=%zu offset=%zu",
+                conn->fd, conn->write_buff->len, conn->write_buff->offset);
 
     io_err err_code = dbuff_write(conn->write_buff, conn->fd);
 
@@ -131,8 +133,9 @@ int read_handler(EventLoop* loop, FileEvent* fe){
         case PARSER_RESULT_OK:
             log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
             http_response_builder(conn->parser, &conn->parser->request, conn, loop);
-            // db_socket_write(conn->write_buff,conn->fd);
+            eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
             return 0;
+            // db_socket_write(conn->write_buff,conn->fd);
         
         case PARSER_RESULT_NEED_MORE:
             return 0;
