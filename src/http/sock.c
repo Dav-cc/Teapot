@@ -73,37 +73,31 @@ int sock_set_nodelay(int fd) {
 }
 
 int write_handler(EventLoop *loop, FileEvent *fe) {
-    EventLoop *Lp = loop;
     Connection* conn = fe->data;
     conn->state = CONN_WRITING;
 
-    ssize_t writed = dbuff_write(conn->write_buff, conn->fd);
+    io_err err_code = dbuff_write(conn->write_buff, conn->fd);
 
-    if (writed == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          log_message(LOG_LEVEL_DEBUG, "fd=%d recieved EAGAIN signal", conn->fd);
-          return 0;
-        }
-        log_message(LOG_LEVEL_ERROR, "write error fd=%d : %s", conn->fd,strerror(errno));
-        eventloop_del_event(Lp, fe);
-        connection_destroy(conn);
-        return -1;
+    switch (err_code){
+        case IO_DONE:
+            eventloop_mod_event(loop, &conn->filev, EV_READABLE);
+            return 0;
+
+        case IO_AGAIN:
+            return 0; 
+
+        case IO_CLOSED:
+            eventloop_del_event(loop, &conn->filev);
+            connection_destroy(conn);
+            return 0;
+
+        case IO_ERROR:
+            log_message(LOG_LEVEL_INFO, "error on fd = %d", conn->fd);
+            eventloop_del_event(loop, &conn->filev);
+            connection_destroy(conn);
+            return 0;
     }
 
-    if (conn->write_buff->offset < conn->write_buff->len) {
-      eventloop_mod_event(Lp, fe, EV_WRITABLE);
-      return 0;
-    }
-
-    /* complete response sent */
-    conn->write_buff->offset = 0;
-    conn->write_buff->len = 0;
-
-    eventloop_mod_event(Lp, fe, EV_READABLE);
-
-    // log_message(LOG_LEVEL_INFO, "fd=%d writed %ld bytes", conn->fd, writed);
-    // EventLoop_ModEvent(Lp, conn, EV_READABLE);
-    // return 0;
 }
 
 int read_handler(EventLoop* loop, FileEvent* fe){
@@ -111,26 +105,27 @@ int read_handler(EventLoop* loop, FileEvent* fe){
     EventLoop* Lp = loop;
     Connection* conn = fe->data;
     conn->state = CONN_READING;
-    ssize_t readed = dbuff_read(conn->read_buff,conn->fd);
-    conn->rlen = readed;
-    if(readed == 0){
-        log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);
-        eventloop_del_event(Lp, fe);
-        connection_destroy(conn);
-        return -1;
-    }
-    if(readed == -1){
-        log_message(LOG_LEVEL_ERROR, "peer fd = %d errored sent no data", conn->fd);
-        connection_destroy(conn);
-        return -1;
-    }
-     log_message(LOG_LEVEL_INFO, "fd = %d\n recived  buffer in %d bytes", conn->fd, readed);
+    io_err err_code = dbuff_read(conn->read_buff,conn->fd);
 
-    log_message(LOG_LEVEL_INFO, "buffer going for parse");
-    
+    switch (err_code){
+        case IO_DONE:   // Going for parsing whats in the buffer
+          break;
+        case IO_CLOSED:
+            eventloop_del_event(loop, &conn->filev);
+            connection_destroy(conn);
+            return 0;
+
+        case IO_ERROR:
+            log_message(LOG_LEVEL_INFO, "error on fd = %d", conn->fd);
+            eventloop_del_event(loop, &conn->filev);
+            connection_destroy(conn);
+            return 0;
+    }
+
+    log_message(LOG_LEVEL_DEBUG, "buffer going for parse");
+
     // TODO: implement this correct
-    conn->rlen = conn->read_buff->len;
-    http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->rlen, &consumed);
+    http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->read_buff->len, &consumed);
 
     switch (res) {
         case PARSER_RESULT_OK:

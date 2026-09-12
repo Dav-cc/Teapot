@@ -21,8 +21,6 @@ struct Connection{
     int fd;
     int listener;
 
-    int rlen;
-    int wlen;
 
     int keep_alive;
 

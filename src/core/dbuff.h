@@ -11,7 +11,7 @@ typedef struct {
 } dbuffer;
 
 typedef enum{
-    IO_OK = 0,
+    IO_DONE = 0,
     IO_ERROR = 1,
     IO_AGAIN = 2,
     IO_CLOSED = 3,

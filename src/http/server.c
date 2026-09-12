@@ -44,8 +44,6 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
     conn->filev.mask = EV_READABLE | EV_ET;
     conn->parser->state = PARSER_STATE_REQUEST_LINE;
     conn->filev.fd = conn->fd;
-    conn->rlen = 0;
-    conn->wlen = 0;
     conn->keep_alive = 1;
     conn->filev.callbacks.on_read = readd;
     conn->filev.callbacks.on_write = writee;

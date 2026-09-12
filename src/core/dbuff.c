@@ -42,14 +42,14 @@ io_err dbuff_read(dbuffer* buf, int fd){
             buf->cap = new_cap;
         }
         ssize_t rd_bytes = read(fd, buf->data + buf->len, buf->cap - buf->len);
-        buf->len += rd_bytes;
         if(rd_bytes > 0){    // we read frome socket 
+            buf->len += rd_bytes;
             continue;
         }
 
         if(rd_bytes == -1){  // we sould check errno value
             if(errno == EWOULDBLOCK || errno == EAGAIN){
-                return IO_AGAIN;
+                return IO_DONE;
             }
             if(errno == EINTR){
                 continue;
@@ -62,15 +62,14 @@ io_err dbuff_read(dbuffer* buf, int fd){
         }
         return IO_ERROR;
     }
-    return IO_OK;
 }
 
 io_err dbuff_write(dbuffer* buf, int fd){
     while(buf->len > buf->offset){
         int wt_bytes = write(fd, buf->data + buf->offset, buf->len - buf->offset);
-        buf->offset += wt_bytes;
 
         if(wt_bytes > 0){
+            buf->offset += wt_bytes;
             continue;
         }
 
@@ -81,7 +80,7 @@ io_err dbuff_write(dbuffer* buf, int fd){
         }
         return IO_ERROR;
     }
-    return IO_OK;
+    return IO_DONE;
 }
 
 
