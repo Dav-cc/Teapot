@@ -77,7 +77,7 @@ int write_handler(EventLoop *loop, FileEvent *fe) {
     Connection* conn = fe->data;
     conn->state = CONN_WRITING;
 
-    ssize_t writed = db_socket_write(conn->write_buff, conn->fd);
+    ssize_t writed = dbuff_write(conn->write_buff, conn->fd);
 
     if (writed == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -111,7 +111,7 @@ int read_handler(EventLoop* loop, FileEvent* fe){
     EventLoop* Lp = loop;
     Connection* conn = fe->data;
     conn->state = CONN_READING;
-    ssize_t readed = db_socket_read(conn->read_buff,conn->fd);
+    ssize_t readed = dbuff_read(conn->read_buff,conn->fd);
     conn->rlen = readed;
     if(readed == 0){
         log_message(LOG_LEVEL_INFO, "client closing connection, fd = %d closed", conn->fd);

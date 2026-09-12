@@ -9,7 +9,7 @@ SRC = \
 	src/http/server.c \
 	src/http/sock.c  \
 	src/http/http_response.c  \
-	src/core/rb.c    \
+	src/core/dbuff.c    \
 	src/parser/http_parser.c\
 
 

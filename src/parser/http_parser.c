@@ -16,7 +16,7 @@ static char* find_crlf(char* ch, size_t len){
     return NULL;
 }
 
-static bool http_parser_parse_req_line(http_parser_t* p, buffer_t* buf, size_t len){
+static bool http_parser_parse_req_line(http_parser_t* p, dbuffer* buf, size_t len){
     char *start = buf->data;
     char *end = find_crlf(start, len);
     if(!end){
@@ -48,7 +48,7 @@ static bool http_parser_parse_req_line(http_parser_t* p, buffer_t* buf, size_t l
     return true;
 }
 
-static bool http_parser_parse_headers(http_parser_t* p, buffer_t* buf, size_t len){
+static bool http_parser_parse_headers(http_parser_t* p, dbuffer* buf, size_t len){
     char* start = buf->data + buf->offset;
     while(p->bytes_consumed <= len){
         char* crlf = find_crlf(start, len - (start - buf->data));
@@ -87,7 +87,7 @@ static bool http_parser_parse_headers(http_parser_t* p, buffer_t* buf, size_t le
     return true;
 }
 
-static bool http_parser_parse_body(http_parser_t* p, buffer_t* buf, size_t len){
+static bool http_parser_parse_body(http_parser_t* p, dbuffer* buf, size_t len){
     if((strncmp(p->request.method.data, "GET", 3)) == 0){
         log_message(LOG_LEVEL_INFO,"GET request, path : %.*s", p->request.path.len, p->request.path.data);
         p->state = PARSER_COMPLETE;
@@ -105,7 +105,7 @@ static bool http_parser_parse_body(http_parser_t* p, buffer_t* buf, size_t len){
     return true;
 }
 
-http_parser_result_t http_parser_parse(http_parser_t* p, buffer_t* buf, size_t len, size_t* consumed){
+http_parser_result_t http_parser_parse(http_parser_t* p, dbuffer* buf, size_t len, size_t* consumed){
     size_t start = p->bytes_consumed;
     while(p->bytes_consumed - start < len){
         switch(p->state){
