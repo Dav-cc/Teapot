@@ -1,79 +1,50 @@
-#ifndef TEAPOT_PARSER_H
-#define TEAPOT_PARSER_H
-
-#include "../core/log.h"
+#ifndef PARSER_TEAPOT_H
+#define PARSER_TEAPOT_H
+#include <stdlib.h>
 #include "../core/dbuff.h"
-#include <stddef.h>
 
 typedef enum {
-    PARSER_RESULT_OK = 0, // http request parsed succesfully
-    PARSER_RESULT_NEED_MORE = 1, // request is not complitly recived
-    PARSER_RESULT_ERROR = 2,      // error in parsing
-}http_parser_result_t;
+    PARSER_NEED_MORE = 0,
+    PARSER_COMPLETE,
+    PARSER_ERROR
+}http_parser_result;
+
+typedef struct {
+    char* ptr;
+    size_t len;
+}http_slice;
+
+typedef struct {
+    http_slice name;
+    http_slice value;
+} http_header;
+
+typedef struct {
+    http_slice method;
+    http_slice path;
+    http_slice version;
+    http_header headers[32];
+    http_slice body;
+    size_t consumed;    // we parse until conn->readbuffer->len == consumed if parsing was successfull returning with PARSER_NEED_MORE
+}http_request;
 
 typedef enum{
-    PARSER_STATE_REQUEST_LINE = 0,
-    PARSER_STATE_HEADERS = 1,
-    // PARSER_STATE_BODY_CONTENT_LENGTH = 2,
-    PARSER_STATE_BODY_PARSING = 3,
-    PARSER_COMPLETE = 4,
-    PARSER_STATE_ERROR = 5,
-}http_parser_state_t;
-
-typedef enum {
-    HTTP_ERR_NONE                 = 0,
-    HTTP_ERR_INVALID_METHOD       = 1,
-    HTTP_ERR_INVALID_REQUEST_TARGET = 2,
-    HTTP_ERR_INVALID_VERSION      = 3,
-    HTTP_ERR_HEADER_NAME_TOO_LONG = 4,
-    HTTP_ERR_HEADER_VALUE_TOO_LONG = 5,
-    HTTP_ERR_TOO_MANY_HEADERS     = 6,
-    HTTP_ERR_INVALID_CONTENT_LENGTH = 7,
-    HTTP_ERR_BODY_TOO_LARGE       = 8,
-    HTTP_ERR_INCOMPLETE           = 9,
-} http_parse_error_e;
-
-typedef struct {
-    http_parse_error_e code;
-    size_t offset;       // where error occurred
-    const char* messg;
-} http_parser_error_t;
-
-typedef struct {
-    char* data ; // pointer to data
-    size_t len;     // words length
-}http_slice_t;
-
-typedef struct {
-    http_slice_t key;
-    http_slice_t value;
-}http_header_t;
+    NO_ERROR =1,
+    ERROR_REQ_NOT_VALID = 0,
+    ERROR_NO_MEMORY = -1,
+    ERROR_TOO_MANY_HEADERS = -2,  // max 32 headres
+}http_error_type;
 
 typedef struct{
-    http_slice_t method;
-    http_slice_t path;
-    http_slice_t version;
+    int any_error;
+    char* txt;
+    http_error_type type;
+}http_error;
 
-    http_header_t headers [256];
-    size_t headers_count;
+http_parser_result http_parser_parse(dbuffer* read_buf);
+http_request* http_parser_request_line(http_request* req,dbuffer* read_buf);
+http_request* http_parser_headers(http_request* req, dbuffer* buf);
+http_request* http_parser_body(http_request* req, dbuffer* buf);
 
-    http_slice_t body;
-    size_t content_length;
-    int keep_alive;
-    size_t header_bytes_parsed;
-    size_t body_bytes_parsed;
-} http_request_t;
 
-typedef struct {
-    http_parser_state_t state;
-    http_parser_error_t error;
-    size_t bytes_consumed;
-    size_t content_length;
-    size_t headers_consumed;
-
-    http_request_t request;  // building request
-}http_parser_t;
-
-http_parser_result_t http_parser_parse(http_parser_t* p, dbuffer* buf, size_t len, size_t* consumed);
-http_parser_t* http_parser_init();
 #endif

@@ -30,13 +30,8 @@ struct Connection{
     dbuffer* write_buff;
 
     FileEvent filev;
-    // connection_handler accept_func;
-    // connection_handler write_func;
-    // connection_handler read_func;
 
-
-    http_parser_state_t pstate;
-    http_parser_t* parser;
+    http_request request;
 };
 
 #endif

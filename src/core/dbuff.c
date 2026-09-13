@@ -51,7 +51,7 @@ io_err dbuff_read(dbuffer* buf, int fd){
                 return IO_DONE;
             }
             if(errno == EINTR){
-                continue;
+                return IO_AGAIN;
             }
         }
         if(rd_bytes == 0){  // peer closed connection 
