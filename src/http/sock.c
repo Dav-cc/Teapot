@@ -2,7 +2,7 @@
 #include "server.h"
 #include "../core/log.h"
 #include "../core/event.h"
-#include "../http/http_response.h"
+// #include "../http/http_response.h"
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -132,25 +132,25 @@ int read_handler(EventLoop* loop, FileEvent* fe){
 
     // TODO: implement this correct 
 
-    // http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->read_buff->len, &consumed);
-    //
-    // switch (res) {
-    //     case PARSER_RESULT_ERROR:
-    //         log_message(LOG_LEVEL_INFO, "parsing error on fd = %d",conn->fd);
-    //         eventloop_del_event(loop, &conn->filev);
-    //         connection_destroy(conn);
-    //         return 0;
-    //
-    //     case PARSER_RESULT_OK:
-    //         log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
-    //         http_response_builder(conn->parser, &conn->parser->request, conn, loop);
-    //         eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
-    //         return 0;
-    //
-    //     case PARSER_RESULT_NEED_MORE:
-    //         return 0;
-    // }
-    // return 0;
+    http_parser_result res = http_parser_parse(conn->read_buff);
+
+    switch (res) {
+        case PARSER_ERROR:
+            log_message(LOG_LEVEL_INFO, "parsing error on fd = %d",conn->fd);
+            eventloop_del_event(loop, &conn->filev);
+            connection_destroy(conn);
+            return 0;
+
+        case PARSER_COMPLETE:
+            log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
+            // http_response_builder(conn->parser, &conn->parser->request, conn, loop);
+            eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
+            return 0;
+
+        case PARSER_NEED_MORE:
+            return 0;
+    }
+    return 0;
 }
 
 int init_listen_socket(int port) {

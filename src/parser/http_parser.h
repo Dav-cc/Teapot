@@ -31,8 +31,8 @@ typedef struct {
 typedef enum{
     NO_ERROR =1,
     ERROR_REQ_NOT_VALID = 0,
-    ERROR_NO_MEMORY = -1,
-    ERROR_TOO_MANY_HEADERS = -2,  // max 32 headres
+    ERROR_TOO_MANY_HEADERS = -1,  // max 32 headres
+    ERROR_PARSER_NEED_MORE = -2,
 }http_error_type;
 
 typedef struct{
@@ -43,8 +43,8 @@ typedef struct{
 
 http_parser_result http_parser_parse(dbuffer* read_buf);
 http_request* http_parser_request_line(http_request* req,dbuffer* read_buf);
-http_request* http_parser_headers(http_request* req, dbuffer* buf);
-http_request* http_parser_body(http_request* req, dbuffer* buf);
+http_request* http_parser_headers(http_request* req, dbuffer* read_buf);
+http_request* http_parser_body(http_request* req, dbuffer* read_buf);
 
 
 #endif
