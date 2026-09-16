@@ -26,6 +26,7 @@ typedef struct {
     http_header headers[32];
     http_slice body;
     size_t consumed;    // we parse until conn->readbuffer->len == consumed if parsing was successfull returning with PARSER_NEED_MORE
+    size_t headers_count;
 }http_request;
 
 typedef enum{

@@ -1,7 +1,7 @@
 #include <stddef.h>
 #define _GNU_SOURCE
 #include "http_parser.h"
-#include "../http/server.h"
+// #include "../http/server.h"
 #include "../core/log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -11,6 +11,15 @@ http_error err = {
     .type = NO_ERROR,
 };
 
+int slice_eq_string(http_slice* slice, char* string){
+    size_t str_len = strlen(string);
+    if(slice->len != str_len)
+        return 0;
+    return memcmp(slice->ptr, string, str_len) == 0;
+}
+
+
+
 char* find_slice(char* src, char* dest, size_t dest_size){
     // TODO : dont hardcode this  .. . . 
     char* d = (char*)memmem(src, 1024 ,dest , dest_size);
@@ -18,6 +27,37 @@ char* find_slice(char* src, char* dest, size_t dest_size){
         return NULL;
     }
     return d;
+}
+
+
+
+http_header* header_lookup(http_header* headers, const char* name, size_t headers_count){
+    int name_len = strlen(name);
+    for(int i = 0; i <headers_count; i++ ){
+        if (slice_eq_string(&headers[i].name, name) )
+            return &headers[i];
+        }
+    return NULL;
+}
+
+int slice_lookup(http_slice* slice, const char* name){
+    int j = strncmp(slice->ptr, name, strlen(name));
+    if(j == 0)
+        return 0;
+    return -1;
+}
+
+size_t slice_to_ul(http_header* con_len){
+    size_t u_len;
+    char tmp[32] = {0};
+
+    char* ptr = memcpy(tmp, con_len->value.ptr, con_len->value.len);
+    if(!ptr){
+        return -1;
+    }
+    tmp[con_len->value.len] = '\0';
+    u_len = strtoul(tmp, NULL, 10);
+    return u_len;
 }
 
 http_parser_result http_parser_parse(dbuffer* buf){
@@ -166,14 +206,45 @@ http_request* http_parser_headers(http_request* req, dbuffer* read_buf){
 
       cur = crlf + 2;
       i++;
+      req->headers_count++;
     }
-    if(err.any_error == 0){
+    read_buf->offset = (h_end - read_buf->data) + 4;
+    if(err.any_error == 0){        
         err.type=  NO_ERROR;
         return req;
     }
     err.type = ERROR_REQ_NOT_VALID;
     return req;
 }
+
 http_request* http_parser_body(http_request* req, dbuffer* read_buf){
-    log_message(LOG_LEVEL_ERROR, "we cant parse body yet");
+    char tmp[32];
+    char* start_body = read_buf->data + read_buf->offset;
+    size_t recived_body = read_buf->len - read_buf->offset;
+
+    http_header *con_len = header_lookup(req->headers, "Content-Length", req->headers_count);
+    if (!con_len) {
+      log_message(LOG_LEVEL_ERROR, "req is POST but no content length");
+      err.any_error = 1;
+      err.type = ERROR_REQ_NOT_VALID;
+      return req;
+    }
+    size_t body_len = slice_to_ul(con_len); 
+    if(body_len == -1){
+      log_message(LOG_LEVEL_ERROR, "body message length invalid");
+      err.any_error = 1;
+      err.type = ERROR_REQ_NOT_VALID;
+      return req;
+    }
+    if(body_len > recived_body){
+        err.any_error =1;
+        err.type = ERROR_PARSER_NEED_MORE;
+        return req;
+    }
+    req->body.ptr = start_body;
+    req->body.len = recived_body;
+    log_message(LOG_LEVEL_INFO, "body parsed");
+    log_message(LOG_LEVEL_INFO, "body : %.*s", req->body.len, req->body.ptr);
+    return req;
+
 }
