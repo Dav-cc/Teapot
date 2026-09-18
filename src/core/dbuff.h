@@ -21,6 +21,6 @@ dbuffer* dbuff_create(size_t cap);
 void dbuff_destroy(dbuffer* buf);
 io_err dbuff_read(dbuffer* buf, int fd);
 io_err dbuff_write(dbuffer* buf ,int fd);
-io_err dbuff_append(dbuffer* buf, char* ch);
+io_err dbuff_append(dbuffer* buf, char* ch, size_t len);
 
 #endif
