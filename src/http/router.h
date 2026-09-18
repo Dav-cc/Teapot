@@ -11,7 +11,7 @@ typedef struct {
     router_handler rout_handler;
 } router;
 
-router* router_match(http_request* req);
+router* find_router(http_request* req);
 
 void* root_handler(http_request* req);
 void* dev_handler(http_request* req);

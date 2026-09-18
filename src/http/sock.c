@@ -1,4 +1,5 @@
 #include "sock.h"
+#include "router.h"
 #include "server.h"
 #include "../core/log.h"
 #include "../core/event.h"
@@ -143,8 +144,10 @@ int read_handler(EventLoop* loop, FileEvent* fe){
 
         case PARSER_COMPLETE:
             log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
-            // http_response_builder(conn->parser, &conn->parser->request, conn, loop);
-            eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
+            router* r = find_router(&conn->request); 
+            if(r == NULL){
+                log_message(LOG_LEVEL_ERROR, "i recive till here");
+            }
             return 0;
 
         case PARSER_NEED_MORE:

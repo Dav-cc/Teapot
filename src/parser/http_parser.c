@@ -10,11 +10,12 @@ http_error err = {
     .type = NO_ERROR,
 };
 
-int slice_eq_string(http_slice* slice, char* string){
+ssize_t slice_eq_string(http_slice* slice, char* string){
     size_t str_len = strlen(string);
     if(slice->len != str_len)
-        return 0;
-    return memcmp(slice->ptr, string, str_len) == 0;
+        return -1;
+    size_t res = memcmp(slice->ptr, string, str_len);
+    return res;
 }
 
 
@@ -33,7 +34,7 @@ char* find_slice(char* src, char* dest, size_t dest_size, size_t len){
 http_header* header_lookup(http_header* headers, char* name, size_t headers_count){
     int name_len = strlen(name);
     for(int i = 0; i <headers_count; i++ ){
-        if (slice_eq_string(&headers[i].name, name) )
+        if (slice_eq_string(&headers[i].name, name) == 0)
             return &headers[i];
         }
     return NULL;
@@ -81,7 +82,7 @@ http_parser_result http_parser_parse(dbuffer* buf){
                 return PARSER_ERROR;
         }
     }
-    
+
     req = http_parser_headers(req, buf);
     if(err.any_error){
         switch (err.type) {
@@ -120,7 +121,6 @@ http_request* http_parser_request_line(http_request* req,dbuffer* read_buf){
         log_message(LOG_LEVEL_ERROR, "couldn't find crlf in req");
         return NULL;
     }
-
 
     char* space1 = find_slice(read_buf->data, " ", 1, read_buf->len);
     if(!space1){

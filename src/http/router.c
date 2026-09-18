@@ -16,10 +16,17 @@ router* find_router(http_request* req){
             continue;
         if((slice_eq_string(&req->path, (char*)routers[i].path)) != 0)
             continue;
+        return &routers[i];
     }
     return NULL;
 }
 
 void* root_handler(http_request* req){
-    // http_response* res = calloc(1,sizeof(http_response));
+    return NULL;
+}
+void* dev_handler(http_request* req){
+    return NULL;
+}
+void* post_handler(http_request* req){
+    return NULL;
 }

@@ -10,6 +10,7 @@ SRC = \
 	src/http/sock.c  \
 	src/core/dbuff.c    \
 	src/parser/http_parser.c\
+	src/http/router.c\
 
 
 OBJ = $(SRC:.c=.o)

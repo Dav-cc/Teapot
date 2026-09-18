@@ -56,5 +56,5 @@ http_request* http_parser_body(http_request* req, dbuffer* read_buf);
 http_request* http_parser_handle_Get(http_request* req, dbuffer* read_buf);
 
 
-int slice_eq_string(http_slice* slice, char* string);
+ssize_t slice_eq_string(http_slice* slice, char* string);
 #endif
