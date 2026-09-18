@@ -5,19 +5,25 @@
 #include "../core/event.h"
 #include "../http/server.h"
 
-typedef struct {
-    int status;
-    const char* reason;
+typedef enum{
+    OK = 200,
+    BAD_REQUEST = 400,
+    TEAPOT = 418,
+    INTERNAL_SERVER_ERROR =500
+} status;
 
-    http_header_t headers[16];
+typedef struct {
+    status code;
+
+    http_header headers[32];
     size_t headers_count;
 
-    const char *body;
-    size_t body_len;
-}http_response_t;
+    http_slice body;
+    http_slice reason;
+}http_response;
 
 
-http_response_t* http_response_serializer(http_parser_t* p,http_request_t* req);
-http_response_t* http_response_builder(http_parser_t* p, http_request_t* req,Connection* conn, EventLoop* loop);
+http_response* http_response_serializer();
+http_response* http_response_builder();
 
 #endif
