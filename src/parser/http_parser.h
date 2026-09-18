@@ -19,7 +19,14 @@ typedef struct {
     http_slice value;
 } http_header;
 
+typedef enum {
+    HTTP_GET = 0,
+    HTTP_POST,
+    HTTP_UNKNOWN
+} http_method;
+
 typedef struct {
+    http_method mtd;
     http_slice method;
     http_slice path;
     http_slice version;
@@ -27,6 +34,7 @@ typedef struct {
     http_slice body;
     size_t consumed;    // we parse until conn->readbuffer->len == consumed if parsing was successfull returning with PARSER_NEED_MORE
     size_t headers_count;
+    http_parser_result result;
 }http_request;
 
 typedef enum{
@@ -38,7 +46,6 @@ typedef enum{
 
 typedef struct{
     int any_error;
-    char* txt;
     http_error_type type;
 }http_error;
 
@@ -46,6 +53,6 @@ http_parser_result http_parser_parse(dbuffer* read_buf);
 http_request* http_parser_request_line(http_request* req,dbuffer* read_buf);
 http_request* http_parser_headers(http_request* req, dbuffer* read_buf);
 http_request* http_parser_body(http_request* req, dbuffer* read_buf);
-
+http_request* http_parser_handle_Get(http_request* req, dbuffer* read_buf);
 
 #endif

@@ -132,9 +132,9 @@ int read_handler(EventLoop* loop, FileEvent* fe){
 
     // TODO: implement this correct 
 
-    http_parser_result res = http_parser_parse(conn->read_buff);
+    conn->request.result = http_parser_parse(conn->read_buff);
 
-    switch (res) {
+    switch (conn->request.result) {
         case PARSER_ERROR:
             log_message(LOG_LEVEL_INFO, "parsing error on fd = %d",conn->fd);
             eventloop_del_event(loop, &conn->filev);
