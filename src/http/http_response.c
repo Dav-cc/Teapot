@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <stdbool.h>
 
 static bool http_slice_eq(http_slice_t s, const char *str){
@@ -19,8 +20,8 @@ http_response_t* http_response_serializer(http_parser_t* p,http_request_t* req){
         log_message(LOG_LEVEL_ERROR, "error in allocating memory");
         return NULL;
     }
-    if(http_slice_eq(req->method,"GET") == 0){
-        if(http_slice_eq(req->path,"/dev") == 0){
+    if(http_slice_eq(req->method,"GET")){
+        if(http_slice_eq(req->path,"/dev")){
             res->headers[0].key.data = "Server",
             res->headers[0].key.len = strlen(res->headers[0].key.data);
             res->headers[0].value.data = "TEAPOT/0.0.1";
@@ -50,7 +51,7 @@ http_response_t* http_response_serializer(http_parser_t* p,http_request_t* req){
         res->status = 404;
         res->reason = "Not Found";
     }
-    if(http_slice_eq(req->method,"POST") == 0){
+    if(http_slice_eq(req->method,"POST")){
         if(http_slice_eq(req->path, "/echo")){
             // TODO: 
         }
@@ -64,7 +65,7 @@ http_response_t* http_response_builder(http_parser_t*p, http_request_t* req, Con
       return NULL;
     }
     dbuffer *wb = conn->write_buff;
-
+    
     wb->len = 0;
     wb->offset = 0;
     int n = snprintf(wb->data + wb->len, wb->cap - wb->len, "HTTP/1.1 %d %s\r\n",
@@ -100,6 +101,5 @@ http_response_t* http_response_builder(http_parser_t*p, http_request_t* req, Con
         wb->len += res->body_len;
     }
     log_message(LOG_LEVEL_INFO,"this buffer going for sending \n%.*s",conn->write_buff->len, conn->write_buff->data);
-    eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
     return res;
 }

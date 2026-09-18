@@ -32,17 +32,8 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
         return NULL;
     }
     //TODO: Parser instance
-    conn->parser = calloc(1, sizeof(http_parser_t));
-    if(!conn->parser){
-        log_message(LOG_LEVEL_ERROR,"error in creating parser, %s ", strerror(errno));
-        free(conn->read_buff);
-        free(conn->write_buff);
-        free(conn);
-        return NULL;
-    }
     conn->fd = fd;
     conn->filev.mask = EV_READABLE | EV_ET;
-    conn->parser->state = PARSER_STATE_REQUEST_LINE;
     conn->filev.fd = conn->fd;
     conn->keep_alive = 1;
     conn->filev.callbacks.on_read = readd;
@@ -56,7 +47,6 @@ int connection_destroy(Connection* conn){
     log_message(LOG_LEVEL_INFO,"Closing connecting- fd = %d, ", conn->fd);
     dbuff_destroy(conn->read_buff);
     dbuff_destroy(conn->write_buff);
-    free(conn->parser);
     close(conn->fd);
     free(conn);
     return 0;

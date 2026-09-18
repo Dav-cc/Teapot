@@ -2,7 +2,7 @@
 #include "server.h"
 #include "../core/log.h"
 #include "../core/event.h"
-#include "../http/http_response.h"
+// #include "../http/http_response.h"
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -75,6 +75,8 @@ int sock_set_nodelay(int fd) {
 int write_handler(EventLoop *loop, FileEvent *fe) {
     Connection* conn = fe->data;
     conn->state = CONN_WRITING;
+    log_message(LOG_LEVEL_INFO, "WRITE EVENT fd=%d len=%zu offset=%zu",
+                conn->fd, conn->write_buff->len, conn->write_buff->offset);
 
     io_err err_code = dbuff_write(conn->write_buff, conn->fd);
 
@@ -108,8 +110,12 @@ int read_handler(EventLoop* loop, FileEvent* fe){
     io_err err_code = dbuff_read(conn->read_buff,conn->fd);
 
     switch (err_code){
+        case IO_AGAIN:
+            return 0;
+
         case IO_DONE:   // Going for parsing whats in the buffer
           break;
+
         case IO_CLOSED:
             eventloop_del_event(loop, &conn->filev);
             connection_destroy(conn);
@@ -124,20 +130,26 @@ int read_handler(EventLoop* loop, FileEvent* fe){
 
     log_message(LOG_LEVEL_DEBUG, "buffer going for parse");
 
-    // TODO: implement this correct
-    http_parser_result_t res = http_parser_parse(conn->parser, conn->read_buff, conn->read_buff->len, &consumed);
+    // TODO: implement this correct 
 
-    switch (res) {
-        case PARSER_RESULT_OK:
-            log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
-            http_response_builder(conn->parser, &conn->parser->request, conn, loop);
-            // db_socket_write(conn->write_buff,conn->fd);
+    conn->request.result = http_parser_parse(conn->read_buff);
+
+    switch (conn->request.result) {
+        case PARSER_ERROR:
+            log_message(LOG_LEVEL_INFO, "parsing error on fd = %d",conn->fd);
+            eventloop_del_event(loop, &conn->filev);
+            connection_destroy(conn);
             return 0;
-        
-        case PARSER_RESULT_NEED_MORE:
+
+        case PARSER_COMPLETE:
+            log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
+            // http_response_builder(conn->parser, &conn->parser->request, conn, loop);
+            eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
+            return 0;
+
+        case PARSER_NEED_MORE:
             return 0;
     }
-
     return 0;
 }
 
