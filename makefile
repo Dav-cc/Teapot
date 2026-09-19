@@ -1,5 +1,5 @@
 CC      = gcc
-CFLAGS  = -Wall -Wextra -Wpedantic -std=c11 -g
+CFLAGS  = -D_GNU_SOURCE -Wall -Wextra -Wpedantic -std=c11 -g
 TARGET  = server
 
 SRC = \
@@ -11,6 +11,7 @@ SRC = \
 	src/core/dbuff.c    \
 	src/parser/http_parser.c\
 	src/http/router.c\
+	src/http/http_response.c\
 
 
 OBJ = $(SRC:.c=.o)
