@@ -6,10 +6,10 @@
 #include "../http/server.h"
 
 typedef enum{
-    OK = 200,
-    BAD_REQUEST = 400,
-    TEAPOT = 418,
-    INTERNAL_SERVER_ERROR =500
+    ST_OK = 200,
+    ST_BAD_REQUEST = 300,
+    ST_TEAPOT = 418,
+    ST_INTERNAL_SERVER_ERROR = 500 
 } status;
 
 typedef struct {
@@ -22,8 +22,12 @@ typedef struct {
     http_slice reason;
 }http_response;
 
-
-http_response* http_response_serializer();
-http_response* http_response_builder();
+void http_response_set_reason(http_response* res,status code);
+void http_response_add_header(http_response* res, const char* name , const char* value);
+void http_response_set_body(http_response* res, const char* body);
+void http_response_set_status(http_response* res,status code);
+size_t http_response_serializer(http_response* res, dbuffer* write_buffer);
+http_response* http_response_create();
+void http_response_destroy();
 
 #endif

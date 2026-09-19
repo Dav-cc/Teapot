@@ -84,21 +84,26 @@ io_err dbuff_write(dbuffer* buf, int fd){
     return IO_DONE;
 }
 
-io_err dbuff_append(dbuffer *buf, char *ch, size_t len){
-        if(buf->cap - buf->len <= 2048){
-            ssize_t new_cap = buf->cap * 2;
-            char* tmp = realloc(buf->data, new_cap);
-            if(!tmp){
-                log_message(LOG_LEVEL_ERROR, "error in allocation : %s", strerror(errno));
-                free(buf->data);
-                free(buf);
-                return IO_ERROR;
-            }
-            buf->data = tmp;
-            buf->cap = new_cap;
+io_err dbuff_append(dbuffer *buf, char *ch, size_t len)
+{
+    while (buf->cap - buf->len < len) {
+        size_t new_cap = buf->cap * 2;
+
+        char *tmp = realloc(buf->data, new_cap);
+        if (!tmp) {
+            log_message(LOG_LEVEL_ERROR,
+                        "realloc failed: %s",
+                        strerror(errno));
+            return IO_ERROR;
         }
-    memcmp(buf->data + buf->len, ch, len);
+
+        buf->data = tmp;
+        buf->cap = new_cap;
+    }
+
+    memcpy(buf->data + buf->len, ch, len);
     buf->len += len;
+
     return IO_DONE;
 }
 

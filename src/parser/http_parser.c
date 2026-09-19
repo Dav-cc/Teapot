@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <sys/types.h>
 #define _GNU_SOURCE
 #include "http_parser.h"
 #include "../core/log.h"
@@ -10,11 +11,11 @@ http_error err = {
     .type = NO_ERROR,
 };
 
-ssize_t slice_eq_string(http_slice* slice, char* string){
+int slice_eq_string(http_slice* slice, char* string){
     size_t str_len = strlen(string);
     if(slice->len != str_len)
         return -1;
-    size_t res = memcmp(slice->ptr, string, str_len);
+    int res = memcmp(slice->ptr, string, str_len);
     return res;
 }
 

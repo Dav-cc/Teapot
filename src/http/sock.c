@@ -1,4 +1,5 @@
 #include "sock.h"
+#include "http_response.h"
 #include "router.h"
 #include "server.h"
 #include "../core/log.h"
@@ -148,6 +149,10 @@ int read_handler(EventLoop* loop, FileEvent* fe){
             if(r == NULL){
                 log_message(LOG_LEVEL_ERROR, "i recive till here");
             }
+            http_response* res = r->rout_handler(&conn->request);
+            size_t w = http_response_serializer(res, conn->write_buff);
+            if(w > 0)
+                eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
             return 0;
 
         case PARSER_NEED_MORE:
