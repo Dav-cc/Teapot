@@ -32,7 +32,7 @@ typedef struct {
     http_slice version;
     http_header headers[32];
     http_slice body;
-    size_t consumed;    // we parse until conn->readbuffer->len == consumed if parsing was successfull returning with PARSER_NEED_MORE
+    int keep_alive;   
     size_t headers_count;
     http_parser_result result;
 }http_request;
@@ -49,12 +49,13 @@ typedef struct{
     http_error_type type;
 }http_error;
 
-http_parser_result http_parser_parse(dbuffer* read_buf);
+http_parser_result http_parser_parse(void* conn,dbuffer* read_buf);
 http_request* http_parser_request_line(http_request* req,dbuffer* read_buf);
 http_request* http_parser_headers(http_request* req, dbuffer* read_buf);
 http_request* http_parser_body(http_request* req, dbuffer* read_buf);
 http_request* http_parser_handle_Get(http_request* req, dbuffer* read_buf);
 
+void http_request_destroy(http_request* req);
 
 int slice_eq_string(http_slice* slice, char* string);
 #endif

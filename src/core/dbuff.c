@@ -27,6 +27,7 @@ dbuffer* dbuff_create(size_t cap){
 }
 
 io_err dbuff_read(dbuffer* buf, int fd){
+    int got_data = 0;
     while(1){
         if(buf->cap - buf->len <= 2048){
             ssize_t new_cap = buf->cap * 2;
@@ -43,21 +44,25 @@ io_err dbuff_read(dbuffer* buf, int fd){
         ssize_t rd_bytes = read(fd, buf->data + buf->len, buf->cap - buf->len);
         if(rd_bytes > 0){    // we read frome socket 
             buf->len += rd_bytes;
+            got_data = 1;
             continue;
         }
 
         if(rd_bytes == -1){  // we sould check errno value
             if(errno == EWOULDBLOCK || errno == EAGAIN){
-                return IO_DONE;
+              log_message(LOG_LEVEL_INFO, "READ fd=%d -> EAGAIN got_data=%d",
+                          fd, got_data);
+              return got_data ? IO_DONE : IO_AGAIN;
             }
             if(errno == EINTR){
-                return IO_AGAIN;
+                continue;
             }
         }
-        if(rd_bytes == 0){  // peer closed connection 
-            // TODO: handle closing connection here
-            log_message(LOG_LEVEL_INFO," peer closed connection");
-            return IO_CLOSED;
+        if(rd_bytes == 0){  // peer closed connection
+          log_message(LOG_LEVEL_INFO, "READ fd=%d -> EOF",fd); 
+          log_message(LOG_LEVEL_DEBUG, "closing fd=%d reason=???", fd);
+          log_message(LOG_LEVEL_INFO, "peer closed connection");
+          return IO_CLOSED;
         }
         return IO_ERROR;
     }
@@ -74,6 +79,9 @@ io_err dbuff_write(dbuffer* buf, int fd){
         if(wt_bytes == -1){
             if(errno == EWOULDBLOCK || errno == EAGAIN){
                 return IO_AGAIN;
+            }
+            if (errno == EINTR) {
+              continue;
             }
         }
         return IO_ERROR;
@@ -105,8 +113,9 @@ io_err dbuff_append(dbuffer *buf, char *ch, size_t len)
 }
 
 io_err dbuff_reset(dbuffer *buf){
-    memset(buf->data, 0, buf->len);
     buf->offset = 0; 
+    buf->len = 0; 
+    return IO_DONE;
 }
 
 void dbuff_destroy(dbuffer* buf){

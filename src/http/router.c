@@ -16,7 +16,7 @@ router* find_router(http_request* req){
     for(size_t i = 0 ; i< route_count; i++){
         if(routers[i].method != req->mtd)
             continue;
-        if((slice_eq_string(&req->path, (char*)routers[i].path)) == 0)
+        if((slice_eq_string(&req->path, (char*)routers[i].path)) != 0)
             continue;
         return &routers[i];
     }

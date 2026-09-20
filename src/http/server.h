@@ -21,9 +21,6 @@ struct Connection{
     int fd;
     int listener;
 
-
-    int keep_alive;
-
     conn_state state; 
 
     dbuffer* read_buff;
@@ -31,7 +28,7 @@ struct Connection{
 
     FileEvent filev;
 
-    http_request request;
+    http_request* request;
 };
 
 #endif

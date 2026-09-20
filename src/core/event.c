@@ -61,11 +61,13 @@ EventError eventloop_Process_events(EventLoop* el){
         }
         if(flags & EPOLLIN){
             if(fe->callbacks.on_read){
+                log_message(LOG_LEVEL_INFO, "calling on_read flage = %d",flags);
                 fe->callbacks.on_read(el, fe);
             }
         }
         if(flags & EPOLLOUT){
             if(fe->callbacks.on_write){
+                log_message(LOG_LEVEL_INFO, "calling on_write callback with flage = %d", flags);
                 fe->callbacks.on_write(el, fe);
             }
         }

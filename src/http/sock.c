@@ -4,7 +4,6 @@
 #include "server.h"
 #include "../core/log.h"
 #include "../core/event.h"
-// #include "../http/http_response.h"
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -77,66 +76,57 @@ int sock_set_nodelay(int fd) {
 int write_handler(EventLoop *loop, FileEvent *fe) {
     Connection* conn = fe->data;
     conn->state = CONN_WRITING;
-    log_message(LOG_LEVEL_INFO, "WRITE EVENT fd=%d len=%zu offset=%zu",
-                conn->fd, conn->write_buff->len, conn->write_buff->offset);
 
     io_err err_code = dbuff_write(conn->write_buff, conn->fd);
+    log_message(LOG_LEVEL_DEBUG, "response sent fd=%d keep_alive=%d", conn->fd,
+                conn->request->keep_alive);
 
     switch (err_code){
-        case IO_DONE:
-            eventloop_mod_event(loop, &conn->filev, EV_READABLE);
-            return 0;
+        case IO_DONE:{
+            if(conn->request->keep_alive == 0){
+                eventloop_del_event(loop, &conn->filev);
+                connection_destroy(conn);
+                return 0;
+            }
+            conn->state = CONN_READING;
 
+            dbuff_reset(conn->read_buff);
+            dbuff_reset(conn->write_buff);
+
+            eventloop_mod_event(loop, &conn->filev, EV_READABLE | EV_ET);
+            return 0;
+        }
         case IO_AGAIN:
             return 0; 
 
         case IO_CLOSED:
-            eventloop_del_event(loop, &conn->filev);
-            connection_destroy(conn);
-            return 0;
-
         case IO_ERROR:
-            log_message(LOG_LEVEL_INFO, "error on fd = %d", conn->fd);
             eventloop_del_event(loop, &conn->filev);
             connection_destroy(conn);
             return 0;
     }
-
+    return 0;
 }
 
 int read_handler(EventLoop* loop, FileEvent* fe){
     size_t consumed = 0;
-    EventLoop* Lp = loop;
     Connection* conn = fe->data;
     conn->state = CONN_READING;
+
     io_err err_code = dbuff_read(conn->read_buff,conn->fd);
 
-    switch (err_code){
-        case IO_AGAIN:
-            return 0;
+    if (err_code == IO_AGAIN)
+      return 0;
 
-        case IO_DONE:   // Going for parsing whats in the buffer
-          break;
-
-        case IO_CLOSED:
-            eventloop_del_event(loop, &conn->filev);
-            connection_destroy(conn);
-            return 0;
-
-        case IO_ERROR:
-            log_message(LOG_LEVEL_INFO, "error on fd = %d", conn->fd);
-            eventloop_del_event(loop, &conn->filev);
-            connection_destroy(conn);
-            return 0;
+    if (err_code == IO_CLOSED || err_code == IO_ERROR) {
+      eventloop_del_event(loop, &conn->filev);
+      connection_destroy(conn);
+      return 0;
     }
 
-    log_message(LOG_LEVEL_DEBUG, "buffer going for parse");
+    conn->request->result = http_parser_parse(conn, conn->read_buff);
 
-    // TODO: implement this correct 
-
-    conn->request.result = http_parser_parse(conn->read_buff);
-
-    switch (conn->request.result) {
+    switch (conn->request->result) {
         case PARSER_ERROR:
             log_message(LOG_LEVEL_INFO, "parsing error on fd = %d",conn->fd);
             eventloop_del_event(loop, &conn->filev);
@@ -144,20 +134,32 @@ int read_handler(EventLoop* loop, FileEvent* fe){
             return 0;
 
         case PARSER_COMPLETE:
-            log_message(LOG_LEVEL_INFO, "parsing complete fd = %d",conn->fd);
-            router* r = find_router(&conn->request); 
-            if(r == NULL){
-                log_message(LOG_LEVEL_ERROR, "i recive till here");
-            }
-            http_response* res = r->rout_handler(&conn->request);
-            size_t w = http_response_serializer(res, conn->write_buff);
-            if(w > 0)
-                eventloop_mod_event(loop, &conn->filev, EV_WRITABLE);
-            return 0;
+            break;
 
         case PARSER_NEED_MORE:
+            // still in read 
             return 0;
     }
+    router* r = find_router(conn->request);
+    if(r == NULL){
+        eventloop_del_event(loop, &conn->filev);
+        connection_destroy(conn);
+        return 0;
+    }
+    http_response *res = r->rout_handler(conn->request);
+
+    size_t w = http_response_serializer(res, conn->write_buff);
+    if (w == 0) {
+      log_message(LOG_LEVEL_ERROR, "failed to serianlize on fd = %d", conn->fd);
+      eventloop_del_event(loop, &conn->filev);
+      connection_destroy(conn);
+      return 0;
+    }
+
+    conn->state = CONN_WRITING;
+
+    eventloop_mod_event(loop, &conn->filev, EV_WRITABLE | EV_ET);
+
     return 0;
 }
 

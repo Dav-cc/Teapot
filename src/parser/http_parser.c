@@ -3,6 +3,7 @@
 #define _GNU_SOURCE
 #include "http_parser.h"
 #include "../core/log.h"
+#include "../http/server.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -61,17 +62,26 @@ ssize_t slice_to_ul(http_header* con_len){
     return u_len;
 }
 
-http_parser_result http_parser_parse(dbuffer* buf){
-    http_request* req = calloc(1, sizeof(http_request));
+http_parser_result http_parser_parse(void* conn,dbuffer* buf){
+    Connection* c = conn;
+    http_request* req = c->request;
+    if(!req){
+        return PARSER_ERROR;
+    }
     req->mtd = HTTP_UNKNOWN;
-    
+    c->request = req;
+ 
     err.any_error = 0;
     err.type = NO_ERROR;
 
     req = http_parser_request_line(req, buf);
+    if(req ==NULL)
+        return PARSER_ERROR;
+
     if(req->mtd == HTTP_UNKNOWN){
         return PARSER_ERROR;
     }
+
     if(err.any_error){
         switch (err.type) {
             case ERROR_PARSER_NEED_MORE:
@@ -120,7 +130,7 @@ http_request* http_parser_request_line(http_request* req,dbuffer* read_buf){
         err.any_error = 1;
         err.type = ERROR_PARSER_NEED_MORE ;
         log_message(LOG_LEVEL_ERROR, "couldn't find crlf in req");
-        return NULL;
+        return req;
     }
 
     char* space1 = find_slice(read_buf->data, " ", 1, read_buf->len);
@@ -165,6 +175,7 @@ http_request* http_parser_request_line(http_request* req,dbuffer* read_buf){
 }
 
 http_request* http_parser_headers(http_request* req, dbuffer* read_buf){
+    http_header* h;
     size_t h_offset = 0, i = 0;
     char* h_start = read_buf->data + read_buf->offset;
     char* h_end = find_slice(h_start, "\r\n\r\n", 4, read_buf->len- read_buf->offset);
@@ -203,6 +214,14 @@ http_request* http_parser_headers(http_request* req, dbuffer* read_buf){
       req->headers_count++;
     }
     read_buf->offset = (h_end - read_buf->data) + 4;
+
+    req->keep_alive = 1;
+
+    if((h = header_lookup(req->headers, "Connection", req->headers_count)) != NULL){
+        if(slice_eq_string(&h->value, "Closed") == 0)
+            req->keep_alive = 0;
+
+    }
 
     err.any_error = 0;       
     err.type=  NO_ERROR;
@@ -253,3 +272,6 @@ http_request* http_parser_body(http_request* req, dbuffer* read_buf){
     return req;
 }
 
+void http_request_destroy(http_request* req){
+    free(req);
+}

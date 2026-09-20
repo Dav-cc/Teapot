@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "server.h"
 #include "../core/event.h"
+#include "../parser/http_parser.h"
 #include "../core/log.h"
 #include "sock.h"
 #include <sys/socket.h>
@@ -9,8 +10,6 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../parser/http_parser.h"
-
 
 Connection* connection_creat(int fd,int is_listener, event_callback readd, event_callback writee){
     Connection* conn = calloc(1, sizeof(Connection));
@@ -31,11 +30,20 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
         free(conn);
         return NULL;
     }
+
+    conn->request = calloc(1, sizeof(http_request));
+    if(!conn->request){
+        log_message(LOG_LEVEL_ERROR,"error in creating requesst, %s ", strerror(errno));
+        free(conn->read_buff);
+        free(conn->write_buff);
+        free(conn);
+        return NULL;
+    }
+
     //TODO: Parser instance
     conn->fd = fd;
     conn->filev.mask = EV_READABLE | EV_ET;
     conn->filev.fd = conn->fd;
-    conn->keep_alive = 1;
     conn->filev.callbacks.on_read = readd;
     conn->filev.callbacks.on_write = writee;
     conn->filev.data = conn;
@@ -45,6 +53,7 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
 }
 int connection_destroy(Connection* conn){
     log_message(LOG_LEVEL_INFO,"Closing connecting- fd = %d, ", conn->fd);
+    http_request_destroy(conn->request);
     dbuff_destroy(conn->read_buff);
     dbuff_destroy(conn->write_buff);
     close(conn->fd);
@@ -88,6 +97,7 @@ int accept_handler(EventLoop *loop, FileEvent *fe) {
         close(afd);
         continue;
     }
+    log_message(LOG_LEVEL_DEBUG, "NEW CONNECTION fd=%d", accept_conn->fd);
     accept_conn->filev.mask = EV_READABLE | EV_ET;
     accept_conn->filev.data = accept_conn;
     eventloop_add_event(loop, &accept_conn->filev);
