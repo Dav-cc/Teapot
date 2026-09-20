@@ -35,6 +35,7 @@ http_response* root_handler(http_request* req){
     http_response_set_status(res, ST_OK);
     http_response_set_reason(res, res->code);
     http_response_add_header(res, "Server", server_name);
+    http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);
     return res;
 }
