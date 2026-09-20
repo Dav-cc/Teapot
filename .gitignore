@@ -2,6 +2,7 @@ project.md
 server
 .zed
 .vscode
+test/
 
 #
 a.out

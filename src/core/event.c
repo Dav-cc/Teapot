@@ -25,7 +25,7 @@ EventLoop* eventloop_create(int max_fds){
     el->state.epollfd = epoll_create1(0);
     if(el->state.epollfd == -1){
         log_message(LOG_LEVEL_ERROR,"epoll creation faild : %s", strerror(errno));
-        free(el->ev);
+        free(el->state.events);
         free(el);
         return NULL;
     }
@@ -108,6 +108,9 @@ EventError eventloop_mod_event(EventLoop* el, FileEvent* fe, uint32_t flag){
     if(flag & EV_WRITABLE){
         ee.events |= EPOLLOUT;
     }
+    if(flag & EV_ET){
+        ee.events |= EPOLLET;
+    }
     if((epoll_ctl(el->state.epollfd,EPOLL_CTL_MOD, fe->fd,&ee)) == -1){
         log_message(LOG_LEVEL_ERROR, "Falied to ADD fd to epoll, mod");
         return LOOP_CTL_ERROR;
@@ -134,7 +137,7 @@ void eventloop_run(EventLoop* el){
 
 void eventloop_destroy(EventLoop* el) {
     if(!el) return ;
-    if (el->ev) free(el->ev);
+    free(el->state.events);
     if (el->state.epollfd >= 0) close(el->state.epollfd);
     free(el);
 }
