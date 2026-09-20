@@ -66,9 +66,6 @@ io_err dbuff_read(dbuffer* buf, int fd){
 io_err dbuff_write(dbuffer* buf, int fd){
     while(buf->len > buf->offset){
         int wt_bytes = write(fd, buf->data + buf->offset, buf->len - buf->offset);
-        log_message(LOG_LEVEL_INFO,
-                    "send() returned %zd, errno=%d, len=%zu, offset=%zu", wt_bytes,
-                    errno, buf->len, buf->offset);
         if(wt_bytes > 0){
             buf->offset += wt_bytes;
             continue;
@@ -107,6 +104,10 @@ io_err dbuff_append(dbuffer *buf, char *ch, size_t len)
     return IO_DONE;
 }
 
+io_err dbuff_reset(dbuffer *buf){
+    memset(buf->data, 0, buf->len);
+    buf->offset = 0; 
+}
 
 void dbuff_destroy(dbuffer* buf){
     free(buf->data);

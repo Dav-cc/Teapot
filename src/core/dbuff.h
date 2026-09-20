@@ -22,5 +22,6 @@ void dbuff_destroy(dbuffer* buf);
 io_err dbuff_read(dbuffer* buf, int fd);
 io_err dbuff_write(dbuffer* buf ,int fd);
 io_err dbuff_append(dbuffer* buf, char* ch, size_t len);
+io_err dbuff_reset(dbuffer* buf);
 
 #endif
