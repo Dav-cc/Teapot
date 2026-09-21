@@ -84,6 +84,8 @@ http_parser_result http_parser_parse(void* conn,dbuffer* buf){
 
     if(err.any_error){
         switch (err.type) {
+            case NO_ERROR:
+                break;
             case ERROR_PARSER_NEED_MORE:
                 return PARSER_NEED_MORE;
 
@@ -97,6 +99,8 @@ http_parser_result http_parser_parse(void* conn,dbuffer* buf){
     req = http_parser_headers(req, buf);
     if(err.any_error){
         switch (err.type) {
+            case NO_ERROR:
+                break;
             case ERROR_PARSER_NEED_MORE:
                 return PARSER_NEED_MORE;
 
@@ -115,6 +119,7 @@ http_parser_result http_parser_parse(void* conn,dbuffer* buf){
                     return PARSER_NEED_MORE;
 
                 case ERROR_REQ_NOT_VALID:
+                case ERROR_TOO_MANY_HEADERS:
                     log_message(LOG_LEVEL_ERROR, "error in parsing body");
                     return PARSER_ERROR;
             }

@@ -3,6 +3,7 @@ server
 .zed
 .vscode
 test/
+doc/    # it well be ignored untill the docs getting ready
 
 #
 a.out
