@@ -1,6 +1,7 @@
 #include "router.h"
 #include "../parser/http_parser.h"
 #include "http_response.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

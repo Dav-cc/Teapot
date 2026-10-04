@@ -7,10 +7,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-http_error err = {
-    .any_error = 0,
-    .type = NO_ERROR,
-};
 
 int slice_eq_string(http_slice* slice, char* string){
     size_t str_len = strlen(string);
@@ -24,8 +20,7 @@ int slice_eq_string(http_slice* slice, char* string){
 
 char* find_slice(char* src, char* dest, size_t dest_size, size_t len){
     // TODO : dont hardcode this  .. . . 
-    char* d = (char*)memmem(src, len,dest , dest_size);
-    if(!d){
+    char* d = (char*)memmem(src, len,dest , dest_size); if(!d){
         return NULL;
     }
     return d;
@@ -63,96 +58,98 @@ ssize_t slice_to_ul(http_header* con_len){
 }
 
 http_parser_result http_parser_parse(void* conn,dbuffer* buf){
+    http_parser_error http_err; 
     Connection* c = conn;
     http_request* req = c->request;
     if(!req){
         return PARSER_ERROR;
     }
-    req->mtd = HTTP_UNKNOWN;
-    c->request = req;
- 
-    err.any_error = 0;
-    err.type = NO_ERROR;
 
-    req = http_parser_request_line(req, buf);
-    if(req ==NULL)
-        return PARSER_ERROR;
-
-    if(req->mtd == HTTP_UNKNOWN){
-        return PARSER_ERROR;
-    }
-
-    if(err.any_error){
-        switch (err.type) {
-            case NO_ERROR:
-                break;
-            case ERROR_PARSER_NEED_MORE:
-                return PARSER_NEED_MORE;
-
-            case ERROR_REQ_NOT_VALID:
-            case ERROR_TOO_MANY_HEADERS:
-                log_message(LOG_LEVEL_ERROR, "error in parsing reqline ");
-                return PARSER_ERROR;
-        }
-    }
-
-    req = http_parser_headers(req, buf);
-    if(err.any_error){
-        switch (err.type) {
-            case NO_ERROR:
-                break;
-            case ERROR_PARSER_NEED_MORE:
-                return PARSER_NEED_MORE;
-
-            case ERROR_REQ_NOT_VALID:
-            case ERROR_TOO_MANY_HEADERS:
-                log_message(LOG_LEVEL_ERROR, "error in parsing reqline");
-                return PARSER_ERROR;
-        }
-    }
-    if(req->mtd == HTTP_POST){
-        req = http_parser_body(req, buf);
-            switch (err.type) {
-                case NO_ERROR: 
-                    break;
-                case ERROR_PARSER_NEED_MORE:
+    switch (req->state) {
+        case PARSER_STATE_REQLINE: 
+            http_err = http_parser_request_line(req, buf);
+            switch (http_err.type){
+                case ERR_REQUEST_NOT_COMPELETE: 
                     return PARSER_NEED_MORE;
 
-                case ERROR_REQ_NOT_VALID:
-                case ERROR_TOO_MANY_HEADERS:
-                    log_message(LOG_LEVEL_ERROR, "error in parsing body");
+                case ERR_INVALID_REQ_LINE: 
+                case ERR_PARSER:
+                case ERR_INVALID_HEADER_CONTENT:
+                case ERR_INVALLID_CONTENT_LENGTH:
+                case ERR_INVALID_HEADER_COUNT:
+
                     return PARSER_ERROR;
             }
+        case PARSER_STATE_HEADERS:
+            http_err = http_parser_headers(req, buf);
+            switch (http_err.type){
+                case ERR_REQUEST_NOT_COMPELETE: 
+                    return PARSER_NEED_MORE;
+
+                case ERR_INVALID_REQ_LINE: 
+                case ERR_PARSER:
+                case ERR_INVALID_HEADER_CONTENT:
+                case ERR_INVALLID_CONTENT_LENGTH:
+                case ERR_INVALID_HEADER_COUNT:
+                    // this parts will be implemented . . .
+
+                    return PARSER_ERROR;
+            }
+
+            if (req->state == PARSER_STATE_DONE)
+              return PARSER_OK;
+
+        case PARSER_STATE_BODY:
+            http_err = http_parser_body(req, buf);
+            switch (http_err.type){
+                case ERR_REQUEST_NOT_COMPELETE: 
+                    return PARSER_NEED_MORE;
+
+                case ERR_INVALID_REQ_LINE: 
+                case ERR_PARSER:
+                case ERR_INVALID_HEADER_CONTENT:
+                case ERR_INVALLID_CONTENT_LENGTH:
+                case ERR_INVALID_HEADER_COUNT:
+                    // this parts will be implemented . . .
+
+                    return PARSER_ERROR;
+            }
+        case PARSER_STATE_DONE:
+            return PARSER_OK;
+
+        case PARSER_STATE_ERROR:
+            log_message(LOG_LEVEL_ERROR,"Error in Parsing Http Request");
+            return PARSER_ERROR;
+
     }
-    return PARSER_COMPLETE;
+    return PARSER_ERROR;
 }
 
 
-http_request* http_parser_request_line(http_request* req,dbuffer* read_buf){
+http_parser_error http_parser_request_line(http_request* req,dbuffer* read_buf){
+    http_parser_error err = {0};
     char* start = read_buf->data;
     char *check = find_slice(read_buf->data, "\r\n", 2, read_buf->len);
     if(!check){
-        err.any_error = 1;
-        err.type = ERROR_PARSER_NEED_MORE ;
         log_message(LOG_LEVEL_ERROR, "couldn't find crlf in req");
-        return req;
+        err.any_err = 1;
+        err.type = ERR_REQUEST_NOT_COMPELETE;
+        return err;
     }
 
     char* space1 = find_slice(read_buf->data, " ", 1, read_buf->len);
     if(!space1){
-        err.any_error = 1;
-        err.type = ERROR_REQ_NOT_VALID;
-        log_message(LOG_LEVEL_ERROR, "couldn't find 1-space in req");
-        return NULL;
+        err.any_err = 1;
+        err.type = ERR_REQUEST_NOT_COMPELETE;
+        return err;
     }
 
     size_t remain = read_buf->len - (space1 + 1 - read_buf->data);
     char* space2 = find_slice(space1+ 1, " ", 1, remain);
     if(!space2){
-        err.any_error = 1;
-        err.type = ERROR_REQ_NOT_VALID;
-        log_message(LOG_LEVEL_ERROR, "couldn't find 2-space in req");
-        return NULL;
+        err.any_err = 1;
+        err.type = ERR_REQUEST_NOT_COMPELETE;
+        return err;
     }
 
     req->method.ptr = start;
@@ -164,8 +161,7 @@ http_request* http_parser_request_line(http_request* req,dbuffer* read_buf){
     req->version.ptr = space2 + 1;
     req->version.len = check - (space2 + 1);
 
-    err.any_error = 0;
-    err.type = NO_ERROR;
+    err.any_err = 0;
 
     if((slice_eq_string(&req->method, "GET")) == 0){
         req->mtd = HTTP_GET;
@@ -174,28 +170,30 @@ http_request* http_parser_request_line(http_request* req,dbuffer* read_buf){
         req->mtd = HTTP_POST;
     }
 
+    req->state = PARSER_STATE_HEADERS;
     read_buf->offset += req->method.len + req->path.len + req->version.len + 1 + 1 + 2 ; // +1's for spaces and +2 for \r\n
 
-    return req;
+    return err;
 }
 
-http_request* http_parser_headers(http_request* req, dbuffer* read_buf){
+http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf){
+    http_parser_error err = {0};
     http_header* h;
     size_t h_offset = 0, i = 0;
     char* h_start = read_buf->data + read_buf->offset;
     char* h_end = find_slice(h_start, "\r\n\r\n", 4, read_buf->len- read_buf->offset);
     if (!h_end) {
-        err.any_error = 1;
-        err.type = ERROR_PARSER_NEED_MORE;
-        return req;
+        err.any_err = 1;
+        err.type = ERR_REQUEST_NOT_COMPELETE;
+        return err;
 }
     char *cur = read_buf->data + read_buf->offset;
 
     while (cur < h_end) {
       if (i >= 32) {
-        err.any_error = 1;
-        err.type = ERROR_TOO_MANY_HEADERS;
-        return req;
+        err.any_err = 1;
+        err.type = ERR_INVALID_HEADER_COUNT;
+        return err;
       }
 
       char *crlf = find_slice(cur, "\r\n", 2, read_buf->len - read_buf->offset);
@@ -203,9 +201,9 @@ http_request* http_parser_headers(http_request* req, dbuffer* read_buf){
 
       if (!crlf || !col || col > crlf){
         log_message(LOG_LEVEL_ERROR, "not valid header formate");
-        err.any_error = 1;
-        err.type = ERROR_REQ_NOT_VALID;
-        return req;
+        err.any_err = 1;
+        err.type = ERR_INVALID_HEADER_CONTENT;
+        return err;
       }
 
       req->headers[i].name.ptr = cur;
@@ -228,12 +226,19 @@ http_request* http_parser_headers(http_request* req, dbuffer* read_buf){
 
     }
 
-    err.any_error = 0;       
-    err.type=  NO_ERROR;
-    return req;
+    err.any_err = 0;
+
+    switch (req->mtd){
+        case HTTP_GET: req->state = PARSER_STATE_DONE; break;
+        case HTTP_POST: req->state = PARSER_STATE_BODY; break;
+        case HTTP_UNKNOWN: req->state = PARSER_STATE_ERROR; break;
+    }
+
+    return err;
 }
 
-http_request* http_parser_body(http_request* req, dbuffer* read_buf){
+http_parser_error http_parser_body(http_request* req, dbuffer* read_buf){
+    http_parser_error err;
     char tmp[32];
     char* start_body = read_buf->data + read_buf->offset;
     size_t recived_body = read_buf->len - read_buf->offset;
@@ -241,40 +246,40 @@ http_request* http_parser_body(http_request* req, dbuffer* read_buf){
     http_header *con_len = header_lookup(req->headers, "Content-Length", req->headers_count);
     if (!con_len) {
       log_message(LOG_LEVEL_ERROR, "req is POST but no content length");
-      err.any_error = 1;
-      err.type = ERROR_REQ_NOT_VALID;
-      return req;
+        err.any_err = 1;
+        err.type = ERR_INVALLID_CONTENT_LENGTH;
+        return err;
     }
     ssize_t body_len = slice_to_ul(con_len); 
     if(body_len == -1){
       log_message(LOG_LEVEL_ERROR, "body message length invalid");
-      err.any_error = 1;
-      err.type = ERROR_REQ_NOT_VALID;
-      return req;
+      err.any_err = 1;
+      err.type = ERR_INVALLID_CONTENT_LENGTH;
+      return err;
     }
 
     if(body_len > recived_body){
-        err.any_error =1;
-        err.type = ERROR_PARSER_NEED_MORE;
-        return req;
+      err.any_err = 1;
+      err.type = ERR_REQUEST_NOT_COMPELETE;
+      return err;
     }
 
     if(body_len < recived_body){
-        err.any_error =1;
-        err.type = ERROR_REQ_NOT_VALID;
-        return req;
+      err.any_err = 1;
+      err.type = ERR_INVALLID_CONTENT_LENGTH;
+      return err;
     }
 
     req->body.ptr = start_body;
     req->body.len = recived_body;
-    err.any_error = 0;
-    err.type = NO_ERROR;
+
+    err.any_err = 0;
 
     read_buf->offset += req->body.len;
-    
+
     log_message(LOG_LEVEL_INFO, "body parsed");
     log_message(LOG_LEVEL_INFO, "body : %.*s", req->body.len, req->body.ptr);
-    return req;
+    return err;
 }
 
 void http_request_destroy(http_request* req){
