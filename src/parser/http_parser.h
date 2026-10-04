@@ -3,9 +3,32 @@
 #include <stdlib.h>
 #include "../core/dbuff.h"
 
+
 typedef enum {
-    PARSER_NEED_MORE = 0,
-    PARSER_COMPLETE,
+    PARSER_STATE_REQLINE = 0,
+    PARSER_STATE_HEADERS,
+    PARSER_STATE_BODY,
+    PARSER_STATE_DONE,
+    PARSER_STATE_ERROR
+}http_parser_state;
+
+typedef enum {
+    ERR_INVALID_REQ_LINE = 10,
+    ERR_INVALID_HEADER_CONTENT,
+    ERR_INVALLID_CONTENT_LENGTH,
+    ERR_INVALID_HEADER_COUNT,
+    ERR_REQUEST_NOT_COMPELETE,
+    ERR_PARSER,
+}http_err_type;
+
+typedef struct{
+    int any_err;
+    http_err_type type;
+}http_parser_error;
+
+typedef enum {
+    PARSER_NEED_MORE = 20,
+    PARSER_OK,
     PARSER_ERROR
 }http_parser_result;
 
@@ -20,7 +43,7 @@ typedef struct {
 } http_header;
 
 typedef enum {
-    HTTP_GET = 0,
+    HTTP_GET = 30,
     HTTP_POST,
     HTTP_UNKNOWN
 } http_method;
@@ -35,25 +58,27 @@ typedef struct {
     int keep_alive;   
     size_t headers_count;
     http_parser_result result;
+    http_parser_state state;
+    http_parser_error err;
 }http_request;
 
-typedef enum{
-    NO_ERROR =1,
-    ERROR_REQ_NOT_VALID = 0,
-    ERROR_TOO_MANY_HEADERS = -1,  // max 32 headres
-    ERROR_PARSER_NEED_MORE = -2,
-}http_error_type;
+// typedef enum{
+//     NO_ERROR =40,
+//     ERROR_REQ_NOT_VALID,
+//     ERROR_TOO_MANY_HEADERS,  // max 32 headres
+//     ERROR_PARSER_NEED_MORE,
+// }http_error_type;
 
 typedef struct{
     int any_error;
-    http_error_type type;
+    http_err_type type;
 }http_error;
 
 http_parser_result http_parser_parse(void* conn,dbuffer* read_buf);
-http_request* http_parser_request_line(http_request* req,dbuffer* read_buf);
-http_request* http_parser_headers(http_request* req, dbuffer* read_buf);
-http_request* http_parser_body(http_request* req, dbuffer* read_buf);
-http_request* http_parser_handle_Get(http_request* req, dbuffer* read_buf);
+http_parser_error http_parser_request_line(http_request* req,dbuffer* read_buf);
+http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf);
+http_parser_error http_parser_body(http_request* req, dbuffer* read_buf);
+http_parser_error http_parser_handle_Get(http_request* req, dbuffer* read_buf);
 
 void http_request_destroy(http_request* req);
 

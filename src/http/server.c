@@ -40,7 +40,6 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
         return NULL;
     }
 
-    //TODO: Parser instance
     conn->fd = fd;
     conn->filev.mask = EV_READABLE | EV_ET;
     conn->filev.fd = conn->fd;

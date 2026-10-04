@@ -133,7 +133,7 @@ int read_handler(EventLoop* loop, FileEvent* fe){
             connection_destroy(conn);
             return 0;
 
-        case PARSER_COMPLETE:
+        case PARSER_OK:
             break;
 
         case PARSER_NEED_MORE:
