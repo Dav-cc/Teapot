@@ -28,7 +28,9 @@ void http_response_set_status(http_response* res,status code){
         case ST_INTERNAL_SERVER_ERROR:
             res->code = 500;
             break;
-    
+        case ST_NOT_IMPLEMENTED:
+            res->code = 501;
+            break;
     }
 }
 
@@ -44,6 +46,10 @@ void http_response_set_reason(http_response* res,status code){
             break;
         case ST_OK:
             res->reason.ptr = "OK";
+            res->reason.len = strlen(res->reason.ptr);
+            break;
+        case ST_NOT_IMPLEMENTED:
+            res->reason.ptr = "Under Development";
             res->reason.len = strlen(res->reason.ptr);
             break;
         case ST_INTERNAL_SERVER_ERROR:

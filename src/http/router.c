@@ -8,7 +8,7 @@
 static router routers[] = {
     {HTTP_GET, "/", root_handler},
     {HTTP_GET, "/dev", dev_handler},
-    {HTTP_GET, "/api/test", post_handler},
+    {HTTP_POST, "/api/test", post_handler},
 };
 
 static size_t route_count = sizeof(routers) / sizeof(routers[0]);
@@ -44,11 +44,31 @@ http_response* root_handler(http_request* req){
 
 
 http_response* dev_handler(http_request* req){
-    return NULL;
+    http_response* res = http_response_create();
+    if(!res){
+        return NULL;
+    }
+
+    http_response_set_status(res, ST_NOT_IMPLEMENTED);
+    http_response_set_reason(res, res->code);
+    http_response_add_header(res, "Server", "Teapot-v0.0.1");
+    http_response_add_header(res, "Connection", "keep-alive");
+    http_response_set_body(res,"Not Implemented");
+    return res;
 }
 
 
 
 http_response* post_handler(http_request* req){
-    return NULL;
+    http_response* res = http_response_create();
+    if(!res){
+        return NULL;
+    }
+
+    http_response_set_status(res, ST_NOT_IMPLEMENTED);
+    http_response_set_reason(res, res->code);
+    http_response_add_header(res, "Server", "Teapot-v0.0.1");
+    http_response_add_header(res, "Connection", "keep-alive");
+    http_response_set_body(res,"Not Implemented");
+    return res;
 }

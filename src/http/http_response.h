@@ -9,7 +9,8 @@ typedef enum{
     ST_OK = 200,
     ST_BAD_REQUEST = 300,
     ST_TEAPOT = 418,
-    ST_INTERNAL_SERVER_ERROR = 500 
+    ST_INTERNAL_SERVER_ERROR = 500 ,
+    ST_NOT_IMPLEMENTED = 501
 } status;
 
 typedef struct {
