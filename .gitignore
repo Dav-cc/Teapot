@@ -1,7 +1,7 @@
 project.md
 server
 .zed
-.vscode
+.vscode/
 test/
 doc/    # it well be ignored untill the docs getting ready
 AGENTS.md 
