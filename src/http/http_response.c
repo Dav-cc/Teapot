@@ -19,11 +19,14 @@ void http_response_set_status(http_response* res,status code){
         case ST_BAD_REQUEST:
             res->code = 300;
             break;
-        case ST_TEAPOT:
-            res->code = 300;
-            break;
         case ST_OK:
             res->code = 200;
+            break;
+        case ST_TEAPOT:
+            res->code = 418;
+            break;
+        case ST_NOT_FOUND:
+            res->code = 404;
             break;
         case ST_INTERNAL_SERVER_ERROR:
             res->code = 500;
@@ -46,6 +49,10 @@ void http_response_set_reason(http_response* res,status code){
             break;
         case ST_OK:
             res->reason.ptr = "OK";
+            res->reason.len = strlen(res->reason.ptr);
+            break;
+        case ST_NOT_FOUND:
+            res->reason.ptr = "Not Found";
             res->reason.len = strlen(res->reason.ptr);
             break;
         case ST_NOT_IMPLEMENTED:
