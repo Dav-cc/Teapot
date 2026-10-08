@@ -119,7 +119,7 @@ file_state* find_mime_type(file_state* fs,const char* path){
     char* dot_type = strstr(path, "."); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
     for(int i = 0; i< mime_table_entry_count; i++){
         if(strcmp(mime_table[i].mime, dot_type)){
-            fs->mime_type = mime_table[i].type;
+            fs->mime_type = mime_table[i].mime;
             return fs;
         }
     }
@@ -128,7 +128,7 @@ file_state* find_mime_type(file_state* fs,const char* path){
 }
 
 file_state* set_body_response(file_state* fs){
-    fs->write_buf = dbuff_create(2048);
+    fs->write_buf = dbuff_create(fs->file_size);
     io_err res = dbuff_read(fs->write_buf, fs->file_fd);
     switch(res){
         case IO_DONE:

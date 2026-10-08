@@ -78,8 +78,8 @@ int write_handler(EventLoop *loop, FileEvent *fe) {
     conn->state = CONN_WRITING;
 
     io_err err_code = dbuff_write(conn->write_buff, conn->fd);
-    log_message(LOG_LEVEL_DEBUG, "response sent fd=%d keep_alive=%d", conn->fd,
-                conn->request->keep_alive);
+    log_message(LOG_LEVEL_DEBUG, "response sent fd=%d, keep_alive=%d, writed_size =%d", conn->fd,
+                conn->request->keep_alive, conn->write_buff->offset);
 
     switch (err_code){
         case IO_DONE:{
