@@ -12,6 +12,7 @@ SRC = \
 	src/parser/http_parser.c\
 	src/http/router.c\
 	src/http/http_response.c\
+	src/static/static.c\
 
 
 OBJ = $(SRC:.c=.o)
