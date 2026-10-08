@@ -12,5 +12,6 @@ typedef struct {
 http_response* static_response_init(http_request* req);
 char* path_verifyer(http_request* req);
 file_state* get_file_state(int filefd);
-file_state* find_mime_type(file_state* fs, char* path);
+file_state* find_mime_type(file_state* fs,const char* path);
+file_state* set_body_response(file_state* fs);
 #endif

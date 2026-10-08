@@ -100,6 +100,16 @@ http_response* static_handler(http_request* req){
 
     st = find_mime_type(st, st->file_path);
 
+    st = set_body_response(st);
+
+
+    http_response_set_status(res, ST_OK);
+    http_response_set_reason(res, res->code);
+    http_response_add_header(res, "Server", "Teapot-v0.0.1");
+    http_response_add_header(res, "Connection", "keep-alive");
+    http_response_add_header(res, "Content-Type", st->mime_type);
+    http_response_set_body(res,st->write_buf->data);
+    return res;
 
 err_404:
     http_response_set_status(res, ST_NOT_FOUND);

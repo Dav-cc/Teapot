@@ -3,6 +3,7 @@
 
 #include "sock.h"
 #include "http_response.h"
+#include "../core/dbuff.h"
 
 typedef http_response* (*router_handler)(http_request* req); // this void* is http_response in future
 
@@ -21,8 +22,9 @@ typedef struct {
 typedef struct {
     int file_fd;
     size_t file_size;
-    char* mime_type;
+    const char* mime_type;
     const char* file_path;
+    dbuffer* write_buf;
 } file_state;
 
 router* find_router(http_request* req);

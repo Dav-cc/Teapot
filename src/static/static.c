@@ -2,6 +2,7 @@
 #include "../parser/http_parser.h"
 #include "../http/router.h"
 #include "../core/log.h"
+#include "../core/dbuff.h"
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -14,6 +15,8 @@ mime_type_table mime_table[] ={
         {".json", "application/json"},
         {".mp4", "video/mp4"},
 };
+
+static int mime_table_entry_count = sizeof(mime_table)/sizeof(mime_table[1]);
 
 char *path_verifyer(http_request * req) {
   char *filepath;
@@ -112,6 +115,31 @@ file_state* get_file_state(int filefd){
     return fst;
 }
 
-file_state* find_mime_type(file_state* fs, char* path){
-    // TODO : attach mim type for every type of resource  
+file_state* find_mime_type(file_state* fs,const char* path){
+    char* dot_type = strstr(path, "."); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
+    for(int i = 0; i< mime_table_entry_count; i++){
+        if(strcmp(mime_table[i].mime, dot_type)){
+            fs->mime_type = mime_table[i].type;
+            return fs;
+        }
+    }
+    fs->mime_type = "application/octet-stream";
+    return fs;
+}
+
+file_state* set_body_response(file_state* fs){
+    fs->write_buf = dbuff_create(2048);
+    io_err res = dbuff_read(fs->write_buf, fs->file_fd);
+    switch(res){
+        case IO_DONE:
+        case IO_CLOSED: 
+            break;
+
+        case IO_ERROR:
+        case IO_AGAIN:
+        
+            dbuff_destroy(fs->write_buf);
+            return fs;
+    }
+    return fs;
 }
