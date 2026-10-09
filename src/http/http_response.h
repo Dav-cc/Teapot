@@ -22,6 +22,7 @@ typedef struct {
 
     http_slice body;
     http_slice reason;
+    size_t con_len;
 }http_response;
 
 void http_response_set_reason(http_response* res,status code);

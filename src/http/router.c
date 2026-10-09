@@ -81,6 +81,7 @@ http_response* post_handler(http_request* req){
 }
 
 http_response* static_handler(http_request* req){
+    char filesize[32];
     http_response* res = http_response_create();
     if(!res){return NULL;}
 
@@ -102,13 +103,24 @@ http_response* static_handler(http_request* req){
 
     st = set_body_response(st);
 
+    snprintf(filesize, sizeof(filesize), "%zu", st->file_size);
+
+    res->body.ptr = st->write_buf->data;
+    printf("res->body.ptr:%s = st->write_buf->data: %s;\n", res->body.ptr,st->write_buf->data);
+
+    res->body.len = st->write_buf->len;
+    printf("res->body.len:%zu = st->write_buf->len: %zu\n",res->body.len, st->write_buf->len );
+
+    res->con_len = st->file_size;
+
 
     http_response_set_status(res, ST_OK);
     http_response_set_reason(res, res->code);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_add_header(res, "Content-Type", st->mime_type);
-    http_response_set_body(res,st->write_buf->data);
+
+
     return res;
 
 err_404:

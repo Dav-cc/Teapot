@@ -10,6 +10,7 @@
 mime_type_table mime_table[] ={
         {".html", "text/html"},
         {".png", "image/png"},
+        {".jpg", "image/jpg"},
         {".gif", "image/gif"},
         {".pdf", "application/pdf"},
         {".json", "application/json"},
@@ -116,9 +117,9 @@ file_state* get_file_state(int filefd){
 }
 
 file_state* find_mime_type(file_state* fs,const char* path){
-    char* dot_type = strstr(path, "."); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
+    char* dot_type = strstr(path + 1, "."); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
     for(int i = 0; i< mime_table_entry_count; i++){
-        if(strcmp(mime_table[i].mime, dot_type)){
+        if(strcmp(mime_table[i].type, dot_type) == 0){
             fs->mime_type = mime_table[i].mime;
             return fs;
         }
@@ -127,19 +128,27 @@ file_state* find_mime_type(file_state* fs,const char* path){
     return fs;
 }
 
-file_state* set_body_response(file_state* fs){
-    fs->write_buf = dbuff_create(fs->file_size);
-    io_err res = dbuff_read(fs->write_buf, fs->file_fd);
-    switch(res){
-        case IO_DONE:
-        case IO_CLOSED: 
-            break;
+file_state* set_body_response(file_state* fs) {
+    if (fs == NULL || fs->file_size < 0)
+        return NULL;
 
-        case IO_ERROR:
-        case IO_AGAIN:
-        
-            dbuff_destroy(fs->write_buf);
-            return fs;
+    fs->write_buf = dbuff_create(fs->file_size);
+    if (fs->write_buf == NULL)
+        return NULL;
+
+    while (fs->write_buf->len < fs->file_size) {
+        io_err res = dbuff_read(fs->write_buf, fs->file_fd);
+
+        if (res == IO_ERROR)
+            return NULL;
+
+        if (res == IO_CLOSED) {
+            if (fs->write_buf->len != fs->file_size)
+                return NULL;
+
+            break;
+        }
     }
+
     return fs;
 }

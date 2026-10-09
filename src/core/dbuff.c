@@ -50,8 +50,6 @@ io_err dbuff_read(dbuffer* buf, int fd){
 
         if(rd_bytes == -1){  // we sould check errno value
             if(errno == EWOULDBLOCK || errno == EAGAIN){
-              log_message(LOG_LEVEL_INFO, "READ fd=%d -> EAGAIN got_data=%d",
-                          fd, got_data);
               return got_data ? IO_DONE : IO_AGAIN;
             }
             if(errno == EINTR){
@@ -59,9 +57,6 @@ io_err dbuff_read(dbuffer* buf, int fd){
             }
         }
         if(rd_bytes == 0){  // peer closed connection
-          log_message(LOG_LEVEL_INFO, "READ fd=%d -> EOF",fd); 
-          log_message(LOG_LEVEL_DEBUG, "closing fd=%d reason=???", fd);
-          log_message(LOG_LEVEL_INFO, "peer closed connection");
           return IO_CLOSED;
         }
         return IO_ERROR;

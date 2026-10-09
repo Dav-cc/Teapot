@@ -12,7 +12,7 @@ http_response* http_response_create(){
         return NULL;
     }
     return res;
-};
+}
 
 void http_response_set_status(http_response* res,status code){
     switch (code) {
@@ -85,12 +85,12 @@ void http_response_set_body(http_response* res, const char* body){
 };
 
 size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
-    char con_len[5];
+    char con_len[32];
     char tmp[1024] = {0};
     int a = sprintf(tmp, "HTTP/1.1 %d %s\r\n", res->code, res->reason.ptr);
     dbuff_append(write_buffer, tmp, a);
 
-    snprintf(con_len, sizeof(con_len), "%zu", res->body.len);
+    snprintf(con_len, sizeof(con_len), "%zu", res->con_len);
     http_response_add_header(res, "Content-Length", con_len);
 
     for(int i = 0; i< res->headers_count; i++){
@@ -102,9 +102,13 @@ size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
     a = sprintf(tmp, "\r\n");
     dbuff_append(write_buffer, tmp, a);
 
-    a = sprintf(tmp, "%s", res->body.ptr);
-    dbuff_append(write_buffer, tmp, a);
+    // a = sprintf(tmp, "%s", res->body.ptr);
+    // dbuff_append(write_buffer, tmp, a);
+
+    if (res->body.len > 0) {
+        dbuff_append(write_buffer, res->body.ptr, res->body.len);
+    }
 
     log_message(LOG_LEVEL_INFO, "%.*s", write_buffer->len, write_buffer->data);
-    return 1;
+    return write_buffer->len;
 }
