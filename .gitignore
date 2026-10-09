@@ -5,7 +5,7 @@ server
 test/
 doc/    # it well be ignored untill the docs getting ready
 AGENTS.md 
-public/doc/teapot-large-test.*
+public/static/doc/teapot-large-test.*
 
 #
 a.out
