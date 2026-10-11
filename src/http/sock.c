@@ -92,6 +92,7 @@ int write_handler(EventLoop *loop, FileEvent *fe) {
 
             dbuff_reset(conn->read_buff);
             dbuff_reset(conn->write_buff);
+            http_parser_reset(conn->request);
 
             eventloop_mod_event(loop, &conn->filev, EV_READABLE | EV_ET);
             return 0;
@@ -129,9 +130,10 @@ int read_handler(EventLoop* loop, FileEvent* fe){
     switch (conn->request->result) {
         case PARSER_ERROR:
             log_message(LOG_LEVEL_INFO, "parsing error on fd = %d",conn->fd);
-            eventloop_del_event(loop, &conn->filev);
-            connection_destroy(conn);
-            return 0;
+goto handle_500;
+            // eventloop_del_event(loop, &conn->filev);
+            // connection_destroy(conn);
+            // return 0;
 
         case PARSER_OK:
             break;
@@ -142,9 +144,10 @@ int read_handler(EventLoop* loop, FileEvent* fe){
     }
     router* r = find_router(conn->request);
     if(r == NULL){
-        eventloop_del_event(loop, &conn->filev);
-        connection_destroy(conn);
-        return 0;
+        unknown_path_handler(conn->request);
+        // eventloop_del_event(loop, &conn->filev);
+        // connection_destroy(conn);
+        // return 0;
     }
     http_response *res = r->rout_handler(conn->request);
 
@@ -160,6 +163,9 @@ int read_handler(EventLoop* loop, FileEvent* fe){
 
     eventloop_mod_event(loop, &conn->filev, EV_WRITABLE | EV_ET);
 
+    return 0;
+handle_500:
+    error_handler(conn->request);
     return 0;
 }
 

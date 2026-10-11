@@ -221,7 +221,7 @@ http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf){
     req->keep_alive = 1;
 
     if((h = header_lookup(req->headers, "Connection", req->headers_count)) != NULL){
-        if(slice_eq_string(&h->value, "Closed") == 0)
+        if(slice_eq_string(&h->value, "closed") == 0)
             req->keep_alive = 0;
 
     }
@@ -280,6 +280,16 @@ http_parser_error http_parser_body(http_request* req, dbuffer* read_buf){
     log_message(LOG_LEVEL_INFO, "body parsed");
     log_message(LOG_LEVEL_INFO, "body : %.*s", req->body.len, req->body.ptr);
     return err;
+}
+
+void http_parser_reset(http_request* req){
+    req->mtd = HTTP_UNKNOWN;
+    req->method.len = 0;
+    req->path.len = 0;
+    req->version.len = 0;
+    req->body.len = 0;
+    req->headers_count = 0;
+    req->state =PARSER_STATE_REQLINE;
 }
 
 void http_request_destroy(http_request* req){
