@@ -33,6 +33,8 @@ http_response* root_handler(http_request* req);
 http_response* static_handler(http_request* req);
 http_response* dev_handler(http_request* req);
 http_response* post_handler(http_request* req);
+http_response* unknown_path_handler(http_request* req);
+http_response* error_handler(http_request* req);
 
 
 #endif

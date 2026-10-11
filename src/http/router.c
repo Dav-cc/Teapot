@@ -31,7 +31,7 @@ router* find_router(http_request* req){
         }
         return &routers[i];
     }
-    return NULL;
+        return &routers[route_count -1];
 }
 
 http_response* unknown_path_handler(http_request* req){
@@ -122,6 +122,18 @@ err_404:
     return res;
 
 err_500:
+    http_response_set_status(res, ST_INTERNAL_SERVER_ERROR);
+    http_response_set_reason(res, res->code);
+    http_response_add_header(res, "Server", "Teapot-v0.0.1");
+    http_response_add_header(res, "Connection", "keep-alive");
+    http_response_set_body(res,"Server Error");
+    return res;
+}
+
+http_response* error_handler(http_request* req){
+    http_response* res = http_response_create();
+    if(!res){return NULL;}
+
     http_response_set_status(res, ST_INTERNAL_SERVER_ERROR);
     http_response_set_reason(res, res->code);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");

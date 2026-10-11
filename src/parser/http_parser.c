@@ -221,7 +221,7 @@ http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf){
     req->keep_alive = 1;
 
     if((h = header_lookup(req->headers, "Connection", req->headers_count)) != NULL){
-        if(slice_eq_string(&h->value, "Closed") == 0)
+        if(slice_eq_string(&h->value, "closed") == 0)
             req->keep_alive = 0;
 
     }
