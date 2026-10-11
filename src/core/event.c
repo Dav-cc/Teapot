@@ -33,7 +33,7 @@ EventLoop* eventloop_create(int max_fds){
     return el;
 }
 
-EventError eventloop_Process_events(EventLoop* el){
+EventError eventloop_process_events(EventLoop* el){
     int num_events = 0;
     // TODO: add TIMER support and ONESHOT
     num_events = epoll_wait(el->state.epollfd, el->state.events, el->max_fds, -1);
@@ -76,10 +76,6 @@ EventError eventloop_Process_events(EventLoop* el){
 }
 
 EventError eventloop_add_event(EventLoop* el, FileEvent* fe){
-    if(fe->fd >= el->max_fds){
-        log_message(LOG_LEVEL_ERROR, "given fd is bigger than max fd");
-        return LOOP_FD_NOT_VALID;
-    }
     struct epoll_event ee = {0};
     ee.data.ptr = fe;
 
@@ -133,7 +129,7 @@ void eventloop_run(EventLoop* el){
     el->running = 1;
     log_message(LOG_LEVEL_INFO, "Event Loop Started. . . ");
     while(el->running){
-        eventloop_Process_events(el);
+        eventloop_process_events(el);
     }
 }
 

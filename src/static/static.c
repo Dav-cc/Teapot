@@ -117,7 +117,11 @@ file_state* get_file_state(int filefd){
 }
 
 file_state* find_mime_type(file_state* fs,const char* path){
-    char* dot_type = strstr(path + 1, "."); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
+    char* dot_type = strchr(path + 1, '.'); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
+    if(!dot_type){
+        return NULL;
+    }
+
     for(int i = 0; i< mime_table_entry_count; i++){
         if(strcmp(mime_table[i].type, dot_type) == 0){
             fs->mime_type = mime_table[i].mime;

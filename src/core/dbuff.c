@@ -34,8 +34,8 @@ io_err dbuff_read(dbuffer* buf, int fd){
             char* tmp = realloc(buf->data, new_cap);
             if(!tmp){
                 log_message(LOG_LEVEL_ERROR, "error in allocation : %s", strerror(errno));
-                free(buf->data);
-                free(buf);
+                // free(buf->data);
+                // free(buf);
                 return IO_ERROR;
             }
             buf->data = tmp;
