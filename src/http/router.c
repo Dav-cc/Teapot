@@ -2,6 +2,7 @@
 #include "../parser/http_parser.h"
 #include "../static/static.h"
 #include "http_response.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -43,6 +44,8 @@ http_response* root_handler(http_request* req){
 
     char* server_name = "Teapot-v0.0.1";
     const char *body = "Hello From TEAPOT";
+    size_t body_len = strlen(body);
+    res->con_len = body_len;
  
     http_response_set_status(res, ST_OK);
     http_response_set_reason(res, res->code);
@@ -57,12 +60,15 @@ http_response* dev_handler(http_request* req){
     if(!res){
         return NULL;
     }
+    const char* noempl = "Not Implemented";
+    size_t body_len = strlen(noempl);
+    res->con_len = body_len;
 
     http_response_set_status(res, ST_NOT_IMPLEMENTED);
     http_response_set_reason(res, res->code);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
-    http_response_set_body(res,"Not Implemented");
+    http_response_set_body(res,noempl);
     return res;
 }
 
@@ -71,12 +77,15 @@ http_response* post_handler(http_request* req){
     if(!res){
         return NULL;
     }
+    const char* noempl = "Not Implemented";
+    size_t body_len = strlen(noempl);
+    res->con_len = body_len;
 
     http_response_set_status(res, ST_NOT_IMPLEMENTED);
     http_response_set_reason(res, res->code);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
-    http_response_set_body(res,"Not Implemented");
+    http_response_set_body(res,noempl);
     return res;
 }
 
