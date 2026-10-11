@@ -92,6 +92,7 @@ int write_handler(EventLoop *loop, FileEvent *fe) {
 
             dbuff_reset(conn->read_buff);
             dbuff_reset(conn->write_buff);
+            http_parser_reset(conn->request);
 
             eventloop_mod_event(loop, &conn->filev, EV_READABLE | EV_ET);
             return 0;

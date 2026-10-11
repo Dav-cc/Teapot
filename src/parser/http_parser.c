@@ -282,6 +282,16 @@ http_parser_error http_parser_body(http_request* req, dbuffer* read_buf){
     return err;
 }
 
+void http_parser_reset(http_request* req){
+    req->mtd = HTTP_UNKNOWN;
+    req->method.len = 0;
+    req->path.len = 0;
+    req->version.len = 0;
+    req->body.len = 0;
+    req->headers_count = 0;
+    req->state =PARSER_STATE_REQLINE;
+}
+
 void http_request_destroy(http_request* req){
     free(req);
 }

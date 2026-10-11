@@ -81,6 +81,7 @@ http_parser_error http_parser_body(http_request* req, dbuffer* read_buf);
 http_parser_error http_parser_handle_Get(http_request* req, dbuffer* read_buf);
 
 void http_request_destroy(http_request* req);
+void http_parser_reset(http_request* req);
 
 int slice_eq_string(http_slice* slice, char* string);
 #endif

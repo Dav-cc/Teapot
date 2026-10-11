@@ -115,10 +115,8 @@ http_response* static_handler(http_request* req){
     snprintf(filesize, sizeof(filesize), "%zu", st->file_size);
 
     res->body.ptr = st->write_buf->data;
-    printf("res->body.ptr:%s = st->write_buf->data: %s;\n", res->body.ptr,st->write_buf->data);
 
     res->body.len = st->write_buf->len;
-    printf("res->body.len:%zu = st->write_buf->len: %zu\n",res->body.len, st->write_buf->len );
 
     res->con_len = st->file_size;
 
