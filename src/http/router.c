@@ -39,7 +39,7 @@ router* find_router(http_request* req){
         return NULL;
 }
 
-http_response* unknown_path_handler(http_request* req){
+http_response* unknown_path_handler(){
     http_response* res = http_response_create();
     if(!res){
         return NULL;
@@ -51,14 +51,14 @@ http_response* unknown_path_handler(http_request* req){
     res->con_len = body_len;
  
     http_response_set_status(res, ST_NOT_IMPLEMENTED);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", server_name);
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);
     return res;
 }
 
-http_response* root_handler(http_request* req){
+http_response* root_handler(){
     http_response* res = http_response_create();
     if(!res){
         return NULL;
@@ -70,7 +70,7 @@ http_response* root_handler(http_request* req){
     res->con_len = body_len;
  
     http_response_set_status(res, ST_OK);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", server_name);
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);
@@ -112,7 +112,7 @@ http_response* static_handler(http_request* req){
 
 
     http_response_set_status(res, ST_OK);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_add_header(res, "Content-Type", st->mime_type);
@@ -127,7 +127,7 @@ err_404:
     res->con_len = b_len;
 
     http_response_set_status(res, ST_NOT_FOUND);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,err_body);
@@ -138,7 +138,7 @@ err_500:
     size_t body_len = strlen(err_body);
     res->con_len = body_len;
     http_response_set_status(res, ST_INTERNAL_SERVER_ERROR);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,err_body);
@@ -146,7 +146,7 @@ err_500:
     return res;
 }
 
-http_response* error_handler(http_request* req){
+http_response* error_handler(){
     http_response* res = http_response_create();
     if(!res){return NULL;}
 
@@ -155,7 +155,7 @@ http_response* error_handler(http_request* req){
     res->con_len = body_len;
 
     http_response_set_status(res, ST_INTERNAL_SERVER_ERROR);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);

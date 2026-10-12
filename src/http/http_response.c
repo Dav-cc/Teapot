@@ -1,7 +1,6 @@
 #include "http_response.h"
 #include "../core/dbuff.h"
 #include "../core/log.h"
-#include "router.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +37,7 @@ void http_response_set_status(http_response* res,status code){
     }
 }
 
-void http_response_set_reason(http_response* res,status code){
+void http_response_set_reason(http_response* res){
     switch (res->code) {
         case ST_BAD_REQUEST:
             res->reason.ptr = "Bad Request";
@@ -83,7 +82,7 @@ void http_response_add_header(http_response* res, const char* name , const char*
 void http_response_set_body(http_response* res, const char* body){
     res->body.ptr = (char*)body;
     res->body.len = strlen(body);
-};
+}
 
 size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
     char con_len[32];
@@ -94,7 +93,7 @@ size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
     snprintf(con_len, sizeof(con_len), "%zu", res->con_len);
     http_response_add_header(res, "Content-Length", con_len);
 
-    for(int i = 0; i< res->headers_count; i++){
+    for(size_t i = 0; i< res->headers_count; i++){
        a = sprintf(tmp,"%s: %s\r\n", res->headers[i].name.ptr , res->headers[i].value.ptr);
         dbuff_append(write_buffer, tmp, a);
     }

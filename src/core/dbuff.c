@@ -104,7 +104,7 @@ io_err dbuff_write(dbuffer* buf, int fd){
     return IO_DONE;
 }
 
-io_err dbuff_append(dbuffer *buf, char *ch, size_t len){
+io_err dbuff_append(dbuffer *buf, char *ch, ssize_t len){
     if(len ==0){
         return IO_DONE;
     }

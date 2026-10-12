@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <sys/types.h>
-// #define _GNU_SOURCE
 #include "http_parser.h"
 #include "../core/log.h"
 #include "../http/server.h"
@@ -29,8 +28,7 @@ char* find_slice(char* src, char* dest, size_t dest_size, size_t len){
 
 
 http_header* header_lookup(http_header* headers, char* name, size_t headers_count){
-    int name_len = strlen(name);
-    for(int i = 0; i <headers_count; i++ ){
+    for(size_t i = 0; i <headers_count; i++ ){
         if (slice_eq_string(&headers[i].name, name) == 0)
             return &headers[i];
         }
@@ -50,7 +48,7 @@ ssize_t slice_to_ul(http_header* con_len){
     if(con_len->value.len >= sizeof(tmp) - 1)
         return -1;
 
-    char* ptr = memcpy(tmp, con_len->value.ptr, con_len->value.len);
+    // char* ptr = memcpy(tmp, con_len->value.ptr, con_len->value.len);
 
     tmp[con_len->value.len] = '\0';
     u_len = strtoul(tmp, NULL, 10);
@@ -68,52 +66,35 @@ http_parser_result http_parser_parse(void* conn,dbuffer* buf){
     switch (req->state) {
         case PARSER_STATE_REQLINE: 
             http_err = http_parser_request_line(req, buf);
-            switch (http_err.type){
-                case ERR_REQUEST_NOT_COMPELETE: 
+                if(http_err.any_err){
+                if(http_err.type == ERR_REQUEST_NOT_COMPELETE){
                     return PARSER_NEED_MORE;
-
-                case ERR_INVALID_REQ_LINE: 
-                case ERR_PARSER:
-                case ERR_INVALID_HEADER_CONTENT:
-                case ERR_INVALLID_CONTENT_LENGTH:
-                case ERR_INVALID_HEADER_COUNT:
-
+                }
                     return PARSER_ERROR;
-            }
+                }
+                /* fall through */
         case PARSER_STATE_HEADERS:
             http_err = http_parser_headers(req, buf);
-            switch (http_err.type){
-                case ERR_REQUEST_NOT_COMPELETE: 
+                if(http_err.any_err){
+                if(http_err.type == ERR_REQUEST_NOT_COMPELETE){
                     return PARSER_NEED_MORE;
-
-                case ERR_INVALID_REQ_LINE: 
-                case ERR_PARSER:
-                case ERR_INVALID_HEADER_CONTENT:
-                case ERR_INVALLID_CONTENT_LENGTH:
-                case ERR_INVALID_HEADER_COUNT:
-                    // this parts will be implemented . . .
-
+                }
                     return PARSER_ERROR;
-            }
+                    }
 
             if (req->state == PARSER_STATE_DONE)
               return PARSER_OK;
+            /* fall through */
 
         case PARSER_STATE_BODY:
             http_err = http_parser_body(req, buf);
-            switch (http_err.type){
-                case ERR_REQUEST_NOT_COMPELETE: 
+                if(http_err.any_err){
+                if(http_err.type == ERR_REQUEST_NOT_COMPELETE){
                     return PARSER_NEED_MORE;
-
-                case ERR_INVALID_REQ_LINE: 
-                case ERR_PARSER:
-                case ERR_INVALID_HEADER_CONTENT:
-                case ERR_INVALLID_CONTENT_LENGTH:
-                case ERR_INVALID_HEADER_COUNT:
-                    // this parts will be implemented . . .
-
+                    }
                     return PARSER_ERROR;
-            }
+                }
+                /* fall through */
         case PARSER_STATE_DONE:
             return PARSER_OK;
 
@@ -180,7 +161,7 @@ http_parser_error http_parser_request_line(http_request* req,dbuffer* read_buf){
 http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf){
     http_parser_error err = {0};
     http_header* h;
-    size_t h_offset = 0, i = 0;
+    size_t i = 0;
     char* h_start = read_buf->data + read_buf->offset;
     char* h_end = find_slice(h_start, "\r\n\r\n", 4, read_buf->len- read_buf->offset);
     if (!h_end) {
@@ -241,9 +222,8 @@ http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf){
 
 http_parser_error http_parser_body(http_request* req, dbuffer* read_buf){
     http_parser_error err;
-    char tmp[32];
     char* start_body = read_buf->data + read_buf->offset;
-    size_t recived_body = read_buf->len - read_buf->offset;
+    ssize_t recived_body = read_buf->len - read_buf->offset;
 
     http_header *con_len = header_lookup(req->headers, "Content-Length", req->headers_count);
     if (!con_len) {

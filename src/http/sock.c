@@ -142,7 +142,7 @@ goto handle_500;
     }
     router* r = find_router(conn->request);
     if(r == NULL){
-        rs = unknown_path_handler(conn->request);
+        rs = unknown_path_handler();
         conn->http_response = rs;
         if(conn->http_response == NULL)
             goto handle_500;

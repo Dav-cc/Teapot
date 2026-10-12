@@ -118,7 +118,7 @@ file_state* get_file_state(int filefd){
 }
 
 file_state* find_mime_type(file_state* fs,const char* path){
-    char* dot_type = strchr(path + 1, '.'); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
+    char* dot_type = strchr((char*)path + 1, '.'); // we should make sure that every "path" reaches to here is normalized(whitout "." or "..")
     if(!dot_type){
         fs->mime_type = "application/octet-stream";
         return fs;
