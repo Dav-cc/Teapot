@@ -1,6 +1,7 @@
 #include "http_response.h"
 #include "../core/dbuff.h"
 #include "../core/log.h"
+#include "router.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -111,4 +112,28 @@ size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
 
     log_message(LOG_LEVEL_INFO, "%.*s", write_buffer->len, write_buffer->data);
     return write_buffer->len;
+}
+
+void http_response_reset(http_response *res){
+    if (res == NULL)
+        return;
+
+    res->code = 0;
+    res->headers_count = 0;
+    res->con_len = 0;
+
+    res->body.ptr = NULL;
+    res->body.len = 0;
+
+    res->reason.ptr = NULL;
+    res->reason.len = 0;
+
+    for (size_t i = 0; i < res->headers_count; i++) {
+        res->headers[i].name.ptr = NULL;
+        res->headers[i].name.len = 0;
+
+        res->headers[i].value.ptr = NULL;
+        res->headers[i].value.len = 0;
+    }
+    free(res);
 }

@@ -78,6 +78,7 @@ http_response* root_handler(http_request* req){
 }
 
 http_response* static_handler(http_request* req){
+    const char* err_body;
     char filesize[32];
     http_response* res = http_response_create();
     if(!res){return NULL;}
@@ -94,6 +95,7 @@ http_response* static_handler(http_request* req){
     if(!st)
         goto err_500;
 
+    res->file_stat = st;
     st->file_path = ver_path;
 
     st = find_mime_type(st, st->file_path);
@@ -116,23 +118,30 @@ http_response* static_handler(http_request* req){
     http_response_add_header(res, "Content-Type", st->mime_type);
 
 
-    close(filefd);
+    reset_file_stat(st);
     return res;
 
 err_404:
+    err_body = "NO such file or dir";
+    size_t b_len = strlen(err_body);
+    res->con_len = b_len;
+
     http_response_set_status(res, ST_NOT_FOUND);
     http_response_set_reason(res, res->code);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
-    http_response_set_body(res,"NO such file or dir");
+    http_response_set_body(res,err_body);
     return res;
 
 err_500:
+    err_body = "Server Error";
+    size_t body_len = strlen(err_body);
+    res->con_len = body_len;
     http_response_set_status(res, ST_INTERNAL_SERVER_ERROR);
     http_response_set_reason(res, res->code);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
-    http_response_set_body(res,"Server Error");
+    http_response_set_body(res,err_body);
     close(filefd);
     return res;
 }
@@ -151,4 +160,10 @@ http_response* error_handler(http_request* req){
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);
     return res;
+}
+
+void reset_file_stat(file_state* fs){
+    free((void*)fs->file_path);
+    fs->file_size = 0;
+    fs->write_buf->offset = 0;
 }
