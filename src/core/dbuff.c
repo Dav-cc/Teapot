@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#define MAX_BUFFER_SIZE (1024 * 64)
+
 
 dbuffer* dbuff_create(size_t cap){
     dbuffer* buffer = calloc(1, sizeof(dbuffer));
@@ -28,7 +30,7 @@ dbuffer* dbuff_create(size_t cap){
 io_err dbuff_read(dbuffer* buf, int fd){
     int got_data = 0;
     while(1){
-        if(buf->cap - buf->len <= 2048){
+        if(buf->cap - buf->len <= 2048 && buf->cap < MAX_BUFFER_SIZE){
             ssize_t new_cap = buf->cap * 2;
             char* tmp = realloc(buf->data, new_cap);
             if(!tmp){
@@ -85,7 +87,7 @@ io_err dbuff_write(dbuffer* buf, int fd){
 
 io_err dbuff_append(dbuffer *buf, char *ch, size_t len)
 {
-    while (buf->cap - buf->len < len) {
+    while (buf->cap - buf->len < len && buf->cap < MAX_BUFFER_SIZE) {
         size_t new_cap = buf->cap * 2;
 
         char *tmp = realloc(buf->data, new_cap);

@@ -119,7 +119,6 @@ void http_response_reset(http_response *res){
         return;
 
     res->code = 0;
-    res->headers_count = 0;
     res->con_len = 0;
 
     res->body.ptr = NULL;
@@ -135,5 +134,6 @@ void http_response_reset(http_response *res){
         res->headers[i].value.ptr = NULL;
         res->headers[i].value.len = 0;
     }
+    res->headers_count = 0;
     free(res);
 }

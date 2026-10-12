@@ -26,6 +26,7 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
     conn->write_buff = dbuff_create(2048);
     if(!conn->write_buff){
         log_message(LOG_LEVEL_ERROR,"error in creating write buffer, %s ", strerror(errno));
+        free(conn->read_buff->data);
         free(conn->read_buff);
         free(conn);
         return NULL;
@@ -34,6 +35,8 @@ Connection* connection_creat(int fd,int is_listener, event_callback readd, event
     conn->request = calloc(1, sizeof(http_request));
     if(!conn->request){
         log_message(LOG_LEVEL_ERROR,"error in creating requesst, %s ", strerror(errno));
+        free(conn->read_buff->data);
+        free(conn->write_buff->data);
         free(conn->read_buff);
         free(conn->write_buff);
         free(conn);
