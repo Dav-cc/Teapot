@@ -1,6 +1,5 @@
 #include "dbuff.h"
 #include "log.h"
-#include <asm-generic/errno.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -65,7 +64,7 @@ io_err dbuff_read(dbuffer* buf, int fd){
 
 io_err dbuff_write(dbuffer* buf, int fd){
     while(buf->len > buf->offset){
-        int wt_bytes = write(fd, buf->data + buf->offset, buf->len - buf->offset);
+        ssize_t wt_bytes = write(fd, buf->data + buf->offset, buf->len - buf->offset);
         if(wt_bytes > 0){
             buf->offset += wt_bytes;
             continue;

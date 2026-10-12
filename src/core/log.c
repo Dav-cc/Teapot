@@ -12,7 +12,7 @@ void log_message(LLevel level, char* format, ...) {
 
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
-    char time_str[20];
+    char time_str[35];
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", t);
 
     printf("[%s] - ", time_str);

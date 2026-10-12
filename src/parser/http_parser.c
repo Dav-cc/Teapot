@@ -1,6 +1,6 @@
 #include <stddef.h>
 #include <sys/types.h>
-#define _GNU_SOURCE
+// #define _GNU_SOURCE
 #include "http_parser.h"
 #include "../core/log.h"
 #include "../http/server.h"
@@ -46,7 +46,7 @@ int slice_lookup(http_slice* slice, const char* name){
 
 ssize_t slice_to_ul(http_header* con_len){
     char tmp[32];
-    size_t u_len;
+    ssize_t u_len;
     if(con_len->value.len >= sizeof(tmp) - 1)
         return -1;
 
@@ -163,6 +163,7 @@ http_parser_error http_parser_request_line(http_request* req,dbuffer* read_buf){
 
     err.any_err = 0;
 
+    req->mtd = HTTP_UNKNOWN;
     if((slice_eq_string(&req->method, "GET")) == 0){
         req->mtd = HTTP_GET;
     }
@@ -196,7 +197,8 @@ http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf){
         return err;
       }
 
-      char *crlf = find_slice(cur, "\r\n", 2, read_buf->len - read_buf->offset);
+      // char *crlf = find_slice(cur, "\r\n", 2, read_buf->len - read_buf->offset);
+      char *crlf = find_slice(cur, "\r\n", 2, read_buf->len - ( cur - read_buf->data));
       char *col = find_slice(cur, ":", 1, read_buf->len - read_buf->offset);
 
       if (!crlf || !col || col > crlf){

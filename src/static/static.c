@@ -36,7 +36,7 @@ char *path_verifyer(http_request * req) {
   }
 
   filepath = calloc(1, 128);
-  if (!path_stack) {
+  if (!filepath) {
     log_message(LOG_LEVEL_ERROR, "FAILED to init memory");
     return NULL;
   }
@@ -108,6 +108,7 @@ file_state* get_file_state(int filefd){
     int res = fstat(filefd, &st);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "Error in function stat");
+        free(fst);
         return NULL;
     }
 

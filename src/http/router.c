@@ -3,6 +3,7 @@
 #include "../static/static.h"
 #include "http_response.h"
 #include <stddef.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -26,9 +27,13 @@ router* find_router(http_request* req){
                 continue;
         }
         if(routers[i].type == PREFIX_ROUTE){
-            if(memcmp(req->path.ptr, "/static/", 8) != 0)
+            size_t prefix_len = strlen(routers[i].path);
+
+            if (req->path.len < prefix_len)
+              continue;
+            if(memcmp(req->path.ptr, routers[i].path, prefix_len) != 0)
                 continue;
-        }
+          }
         return &routers[i];
     }
         return &routers[route_count -1];
@@ -41,7 +46,7 @@ http_response* unknown_path_handler(http_request* req){
     }
 
     char* server_name = "Teapot-v0.0.1";
-    const char *body = "<html> <h1>Not implemented </h1></html>";
+    const char *body = "<html><h1>Not implemented </h1></html>";
     size_t body_len = strlen(body);
     res->con_len = body_len;
  
@@ -111,6 +116,7 @@ http_response* static_handler(http_request* req){
     http_response_add_header(res, "Content-Type", st->mime_type);
 
 
+    close(filefd);
     return res;
 
 err_404:
@@ -127,6 +133,7 @@ err_500:
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,"Server Error");
+    close(filefd);
     return res;
 }
 
