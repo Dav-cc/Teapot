@@ -17,7 +17,7 @@ http_response* http_response_create(){
 void http_response_set_status(http_response* res,status code){
     switch (code) {
         case ST_BAD_REQUEST:
-            res->code = 300;
+            res->code = 400;
             break;
         case ST_OK:
             res->code = 200;

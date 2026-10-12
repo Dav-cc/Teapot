@@ -110,9 +110,9 @@ int write_handler(EventLoop *loop, FileEvent *fe) {
 }
 
 int read_handler(EventLoop* loop, FileEvent* fe){
-    size_t consumed = 0;
     Connection* conn = fe->data;
     conn->state = CONN_READING;
+    http_response* rs;
 
     io_err err_code = dbuff_read(conn->read_buff,conn->fd);
 
@@ -144,7 +144,20 @@ goto handle_500;
     }
     router* r = find_router(conn->request);
     if(r == NULL){
-        unknown_path_handler(conn->request);
+        rs = unknown_path_handler(conn->request);
+        if(rs == NULL)
+            goto handle_500;
+        size_t x = http_response_serializer(rs, conn->write_buff);
+        if (x == 0) {
+          log_message(LOG_LEVEL_ERROR, "Server Error Closing Connection",
+                      conn->fd);
+          eventloop_del_event(loop, &conn->filev);
+          connection_destroy(conn);
+          return 0;
+        }
+        conn->state = CONN_WRITING;
+        eventloop_mod_event(loop, &conn->filev, EV_WRITABLE | EV_ET);
+        return 0;
         // eventloop_del_event(loop, &conn->filev);
         // connection_destroy(conn);
         // return 0;
@@ -154,9 +167,10 @@ goto handle_500;
     size_t w = http_response_serializer(res, conn->write_buff);
     if (w == 0) {
       log_message(LOG_LEVEL_ERROR, "failed to serianlize on fd = %d", conn->fd);
-      eventloop_del_event(loop, &conn->filev);
-      connection_destroy(conn);
-      return 0;
+      goto handle_500;
+      // eventloop_del_event(loop, &conn->filev);
+      // connection_destroy(conn);
+      // return 0;
     }
 
     conn->state = CONN_WRITING;
@@ -165,12 +179,19 @@ goto handle_500;
 
     return 0;
 handle_500:
-    error_handler(conn->request);
+    rs = error_handler(conn->request);
+    size_t x = http_response_serializer(rs, conn->write_buff);
+    if(x == 0){
+      log_message(LOG_LEVEL_ERROR, "Server Error Closing Connection", conn->fd);
+      eventloop_del_event(loop, &conn->filev);
+      connection_destroy(conn);
+      return 0;
+    }
+    eventloop_mod_event(loop, &conn->filev, EV_WRITABLE | EV_ET);
     return 0;
 }
 
 int init_listen_socket(int port) {
-    int yes =1;
     struct sockaddr_in addr = {0};
 
     // creat tcp ipv4 socket
