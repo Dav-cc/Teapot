@@ -109,7 +109,6 @@ size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
         dbuff_append(write_buffer, res->body.ptr, res->body.len);
     }
 
-    log_message(LOG_LEVEL_INFO, "%.*s", write_buffer->len, write_buffer->data);
     return write_buffer->len;
 }
 

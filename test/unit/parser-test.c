@@ -270,7 +270,7 @@ Test(parser_helpers, header_lookup_is_case_insensitive)
  * slice_to_ul
  * ============================================================ */
 
-static ssize_t convert_length(const char *value, size_t len)
+static ssize_t test_convert_length(const char *value, size_t len)
 {
     http_header h = {0};
     h.value.ptr = (char *)value;
@@ -856,21 +856,15 @@ Test(parser_body, rejects_negative_content_length)
 
 Test(parser_body, rejects_duplicate_content_length)
 {
-    const char input[] = "hello";
     parser_fixture f;
+    fixture_init(&f, "", 0);
 
-    fixture_init(&f, input, sizeof(input) - 1);
     f.req.headers_count = 2;
     make_header(&f.req.headers[0], "Content-Length", "5");
     make_header(&f.req.headers[1], "Content-Length", "4");
 
-    /*
-     * Duplicate Content-Length values must not be silently trusted.
-     * A hardened parser should reject conflicting duplicates.
-     */
-    http_parser_error err = parse_body(&f);
+    cr_assert_eq(has_duplicate_content_length(&f.req), 1);
 
-    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
     fixture_destroy(&f);
 }
 
@@ -967,4 +961,879 @@ Test(parser_integration, error_state_returns_parser_error)
     cr_assert_eq(parse_all(&f), PARSER_ERROR);
 
     fixture_destroy(&f);
+}
+
+
+/* ============================================================
+ * Request-line edge cases
+ * Requires the existing parser_fixture helpers.
+ * ============================================================ */
+
+Test(parser_request_line_edges, accepts_http_10)
+{
+    const char input[] = "GET / HTTP/1.0\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.method, "GET", 3);
+    expect_slice(&f.req.path, "/", 1);
+    expect_slice(&f.req.version, "HTTP/1.0", 8);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, accepts_query_string_in_target)
+{
+    const char input[] = "GET /search?q=abc&n=2 HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.path, "/search?q=abc&n=2", 17);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, accepts_percent_encoded_target)
+{
+    const char input[] = "GET /a%20b HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.path, "/a%20b", 6);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_empty_line)
+{
+    const char input[] = "\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_empty_method)
+{
+    const char input[] = " / HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_empty_target)
+{
+    const char input[] = "GET  HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_empty_version)
+{
+    const char input[] = "GET / \r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_multiple_spaces)
+{
+    const char input[] = "GET  / HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_trailing_space)
+{
+    const char input[] = "GET / HTTP/1.1 \r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_tab_as_separator)
+{
+    const char input[] = "GET\t/ HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_lf_only_ending)
+{
+    const char input[] = "GET / HTTP/1.1\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, incomplete_without_crlf_needs_more)
+{
+    const char input[] = "GET / HTTP/1.1";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_REQUEST_NOT_COMPELETE);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, incomplete_trailing_cr_needs_more)
+{
+    const char input[] = "GET / HTTP/1.1\r";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_REQUEST_NOT_COMPELETE);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_unknown_method)
+{
+    const char input[] = "PUT / HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_invalid_version)
+{
+    const char input[] = "GET / HTTP/9.9\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_version_without_minor_number)
+{
+    const char input[] = "GET / HTTP/1.\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, rejects_embedded_nul)
+{
+    const char input[] = {
+        'G', 'E', 'T', ' ', '/', '\0',
+        ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n'
+    };
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input));
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_edges, parses_from_nonzero_offset)
+{
+    const char input[] = "junkGET / HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.buf.offset = 4;
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.method, "GET", 3);
+    expect_slice(&f.req.path, "/", 1);
+    expect_slice(&f.req.version, "HTTP/1.1", 8);
+    cr_assert_eq(f.buf.offset, 4 + strlen("GET / HTTP/1.1\r\n"));
+    fixture_destroy(&f);
+}
+
+
+/* ============================================================
+ * Header-parser edge cases
+ * ============================================================ */
+
+Test(parser_header_edges, accepts_header_without_value)
+{
+    const char input[] = "X-Empty:\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    cr_assert_eq(f.req.headers_count, 1);
+    expect_slice(&f.req.headers[0].name, "X-Empty", 7);
+    cr_assert_eq(f.req.headers[0].value.len, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, accepts_header_without_space_after_colon)
+{
+    const char input[] = "X-Test:value\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.headers[0].value, "value", 5);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, trims_multiple_spaces_after_colon)
+{
+    const char input[] = "X-Test:   value\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.headers[0].value, "value", 5);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, trims_tabs_after_colon)
+{
+    const char input[] = "X-Test:\t\tvalue\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.headers[0].value, "value", 5);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_empty_name)
+{
+    const char input[] = ": value\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_header_without_colon)
+{
+    const char input[] = "X-Test value\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_whitespace_before_colon)
+{
+    const char input[] = "X-Test : value\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_space_in_header_name)
+{
+    const char input[] = "Bad Name: value\r\n\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_lf_only_header_ending)
+{
+    const char input[] = "X-Test: value\n\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, incomplete_header_block_needs_more)
+{
+    const char input[] = "X-Test: value\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_REQUEST_NOT_COMPELETE);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, accepts_exactly_header_limit)
+{
+    char input[2048];
+    size_t used = 0;
+
+    for (size_t i = 0; i < HEADER_LIMIT; i++) {
+        int n = snprintf(input + used, sizeof(input) - used,
+                         "X-%zu: v\r\n", i);
+        cr_assert_gt(n, 0);
+        used += (size_t)n;
+    }
+
+    input[used++] = '\r';
+    input[used++] = '\n';
+
+    parser_fixture f;
+    fixture_init(&f, input, used);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    cr_assert_eq(f.req.headers_count, HEADER_LIMIT);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_more_than_header_limit)
+{
+    char input[2048];
+    size_t used = 0;
+
+    for (size_t i = 0; i < HEADER_LIMIT + 1; i++) {
+        int n = snprintf(input + used, sizeof(input) - used,
+                         "X-%zu: v\r\n", i);
+        cr_assert_gt(n, 0);
+        used += (size_t)n;
+    }
+
+    input[used++] = '\r';
+    input[used++] = '\n';
+
+    parser_fixture f;
+    fixture_init(&f, input, used);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALID_HEADER_COUNT);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_duplicate_content_length)
+{
+    const char input[] =
+        "Content-Length: 5\r\n"
+        "Content-Length: 4\r\n"
+        "\r\n";
+
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.mtd = HTTP_POST;
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_edges, rejects_identical_duplicate_content_length)
+{
+    const char input[] =
+        "Content-Length: 5\r\n"
+        "Content-Length: 5\r\n"
+        "\r\n";
+
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.mtd = HTTP_POST;
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+
+/* ============================================================
+ * Content-Length and body edge cases
+ * ============================================================ */
+
+Test(parser_body_edges, accepts_zero_length_body)
+{
+    parser_fixture f;
+    fixture_init(&f, "", 0);
+    f.req.mtd = HTTP_POST;
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "0");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    cr_assert_eq(f.req.body.len, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, accepts_exact_body_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.mtd = HTTP_POST;
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "5");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.body, "hello", 5);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, accepts_binary_body_with_nul)
+{
+    const char input[] = { 'A', '\0', 'B' };
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input));
+    f.req.mtd = HTTP_POST;
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "3");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_eq(err.any_err, 0);
+    cr_assert_eq(f.req.body.len, 3);
+    cr_assert_eq(memcmp(f.req.body.ptr, input, 3), 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_missing_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_empty_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_negative_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "-1");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_plus_sign_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "+5");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_alphabetic_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "abc");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_trailing_junk_in_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "5x");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_whitespace_in_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", " 5");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_overflowing_content_length)
+{
+    const char input[] = "hello";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0],
+                "Content-Length",
+                "999999999999999999999999999999999999999999999");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, incomplete_body_needs_more_data)
+{
+    const char input[] = "hel";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "5");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_REQUEST_NOT_COMPELETE);
+    fixture_destroy(&f);
+}
+
+Test(parser_body_edges, rejects_body_longer_than_content_length)
+{
+    const char input[] = "hello!";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.headers_count = 1;
+    make_header(&f.req.headers[0], "Content-Length", "5");
+
+    http_parser_error err = parse_body(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_INVALLID_CONTENT_LENGTH);
+    fixture_destroy(&f);
+}
+
+
+/* ============================================================
+ * Security and state edge cases
+ * ============================================================ */
+
+Test(parser_header_security, header_lookup_is_case_insensitive)
+{
+    http_header headers[1] = {0};
+    make_header(&headers[0], "Content-Length", "5");
+
+    cr_assert_not_null(header_lookup(headers, "content-length", 1));
+    cr_assert_not_null(header_lookup(headers, "CONTENT-LENGTH", 1));
+    cr_assert_not_null(header_lookup(headers, "CoNtEnT-LeNgTh", 1));
+}
+
+Test(parser_header_security, header_lookup_zero_count_returns_null)
+{
+    http_header headers[1] = {0};
+
+    cr_assert_null(header_lookup(headers, "Host", 0));
+}
+
+
+Test(parser_header_security, rejects_embedded_nul_in_header_name)
+{
+    const char input[] = {
+        'X', '-', 'B', 'a', 'd', '\0', ':', ' ',
+        'v', '\r', '\n', '\r', '\n'
+    };
+
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input));
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_security, rejects_bare_lf_inside_header_block)
+{
+    const char input[] = "X-Test: value\nHost: example.com\r\n\r\n";
+
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_security, rejects_header_continuation_line)
+{
+    const char input[] = "X-Test: value\r\n continuation\r\n\r\n";
+
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_headers(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_header_security, rejects_content_length_with_leading_zeroes_if_policy_requires)
+{
+    const char input[] = "Content-Length: 0005\r\n\r\n";
+
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+    f.req.mtd = HTTP_POST;
+
+    http_parser_error err = parse_headers(&f);
+
+    /*
+     * Leading zeroes are valid decimal syntax.
+     * This test checks acceptance, not rejection.
+     */
+    cr_assert_eq(err.any_err, 0);
+    cr_assert_eq(f.req.headers_count, 1);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_security, rejects_crlf_injection_before_request_line_end)
+{
+    const char input[] = "GET / HTTP/1.1\r\nInjected: yes\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    /*
+     * Request-line parsing consumes only the first line.
+     * The following bytes belong to header parsing and must not
+     * be interpreted as part of the request target or version.
+     */
+    cr_assert_eq(err.any_err, 0);
+    expect_slice(&f.req.method, "GET", 3);
+    expect_slice(&f.req.path, "/", 1);
+    expect_slice(&f.req.version, "HTTP/1.1", 8);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_security, rejects_version_with_suffix)
+{
+    const char input[] = "GET / HTTP/1.1XYZ\r\n";
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input) - 1);
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_security, rejects_version_with_embedded_nul)
+{
+    const char input[] = {
+        'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P',
+        '/', '1', '.', '1', '\0', '\r', '\n'
+    };
+
+    parser_fixture f;
+    fixture_init(&f, input, sizeof(input));
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    fixture_destroy(&f);
+}
+
+Test(parser_request_line_security, does_not_accept_bytes_after_logical_buffer_end)
+{
+    char storage[] = "GET / HTTP/1.1\r\n";
+    parser_fixture f;
+    fixture_init(&f, storage, sizeof(storage) - 1);
+
+    /*
+     * Make the logical buffer end before the CRLF, even though the
+     * allocated memory still contains those bytes.
+     */
+    f.buf.len = strlen("GET / HTTP/1.1");
+
+    http_parser_error err = parse_request_line(&f);
+
+    cr_assert_neq(err.any_err, 0);
+    cr_assert_eq(err.type, ERR_REQUEST_NOT_COMPELETE);
+    fixture_destroy(&f);
+}
+
+
+/* ============================================================
+ * find_slice boundary cases
+ * ============================================================ */
+
+Test(parser_find_slice_edges, empty_haystack_returns_null)
+{
+    char input[] = "";
+
+    cr_assert_null(find_slice(input, "x", 1, 0));
+}
+
+Test(parser_find_slice_edges, empty_needle_returns_start)
+{
+    char input[] = "abc";
+
+    /*
+     * memmem() returns the haystack for a zero-length needle.
+     * If Teapot wants a different contract, define it explicitly.
+     */
+    cr_assert_eq(find_slice(input, "", 0, 3), input);
+}
+
+Test(parser_find_slice_edges, match_at_first_byte)
+{
+    char input[] = "abc";
+
+    cr_assert_eq(find_slice(input, "a", 1, 3), input);
+}
+
+Test(parser_find_slice_edges, match_at_last_valid_position)
+{
+    char input[] = "abcd";
+
+    cr_assert_eq(find_slice(input, "cd", 2, 4), input + 2);
+}
+
+Test(parser_find_slice_edges, needle_one_byte_longer_than_haystack)
+{
+    char input[] = "ab";
+
+    cr_assert_null(find_slice(input, "abc", 3, 2));
+}
+
+Test(parser_find_slice_edges, ignores_matching_bytes_after_len)
+{
+    char input[] = { 'a', 'b', 'c', 'X', 'Y', 'Z' };
+
+    cr_assert_null(find_slice(input, "XYZ", 3, 3));
+}
+
+Test(parser_find_slice_edges, binary_data_is_not_terminated_by_nul)
+{
+    char input[] = { 'A', '\0', 'B', '\r', '\n' };
+
+    cr_assert_eq(find_slice(input, "\r\n", 2, sizeof(input)),
+                 input + 3);
+}
+
+Test(parser_find_slice_edges, does_not_match_partial_crlf)
+{
+    char input[] = { 'a', '\r', 'b', '\n' };
+
+    cr_assert_null(find_slice(input, "\r\n", 2, sizeof(input)));
 }
