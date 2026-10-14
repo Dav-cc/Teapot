@@ -150,6 +150,18 @@ io_err dbuff_reset(dbuffer *buf){
     return IO_DONE;
 }
 
+
+void dbuff_compact(dbuffer* buf){
+    if(buf->len == 0)
+        return ;
+    size_t remain = buf->len - buf->offset;
+    if(remain > 0){
+        memmove(buf->data, buf->data + buf->offset, remain);
+    }
+    buf->len = remain;
+    buf->offset = 0;
+}
+
 void dbuff_destroy(dbuffer* buf){
     free(buf->data);
     free(buf);
