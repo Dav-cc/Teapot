@@ -21,7 +21,7 @@ typedef struct {
 
 typedef struct {
     int file_fd;
-    size_t file_size;
+    ssize_t file_size;
     const char* mime_type;
     const char* file_path;
     dbuffer* write_buf;
@@ -29,12 +29,12 @@ typedef struct {
 
 router* find_router(http_request* req);
 
-http_response* root_handler(http_request* req);
+http_response* root_handler();
 http_response* static_handler(http_request* req);
 http_response* dev_handler(http_request* req);
 http_response* post_handler(http_request* req);
-http_response* unknown_path_handler(http_request* req);
-http_response* error_handler(http_request* req);
+http_response* unknown_path_handler();
+http_response* error_handler();
 void reset_file_stat(file_state *st);
 
 #endif

@@ -1,7 +1,5 @@
 #include "http_response.h"
 #include "../core/dbuff.h"
-#include "../core/log.h"
-#include "router.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,14 +36,14 @@ void http_response_set_status(http_response* res,status code){
     }
 }
 
-void http_response_set_reason(http_response* res,status code){
+void http_response_set_reason(http_response* res){
     switch (res->code) {
         case ST_BAD_REQUEST:
             res->reason.ptr = "Bad Request";
             res->reason.len = strlen(res->reason.ptr);
             break;
         case ST_TEAPOT:
-            res->reason.ptr = "Ima Teapot";
+            res->reason.ptr = "I'm a teapot";
             res->reason.len = strlen(res->reason.ptr);
             break;
         case ST_OK:
@@ -57,7 +55,7 @@ void http_response_set_reason(http_response* res,status code){
             res->reason.len = strlen(res->reason.ptr);
             break;
         case ST_NOT_IMPLEMENTED:
-            res->reason.ptr = "Under Development";
+            res->reason.ptr = "Not Implemented";
             res->reason.len = strlen(res->reason.ptr);
             break;
         case ST_INTERNAL_SERVER_ERROR:
@@ -83,18 +81,20 @@ void http_response_add_header(http_response* res, const char* name , const char*
 void http_response_set_body(http_response* res, const char* body){
     res->body.ptr = (char*)body;
     res->body.len = strlen(body);
-};
+    res->con_len = res->body.len;
+}
 
 size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
     char con_len[32];
     char tmp[1024] = {0};
+    res->body.len = res->con_len;
     int a = sprintf(tmp, "HTTP/1.1 %d %s\r\n", res->code, res->reason.ptr);
     dbuff_append(write_buffer, tmp, a);
 
     snprintf(con_len, sizeof(con_len), "%zu", res->con_len);
     http_response_add_header(res, "Content-Length", con_len);
 
-    for(int i = 0; i< res->headers_count; i++){
+    for(size_t i = 0; i< res->headers_count; i++){
        a = sprintf(tmp,"%s: %s\r\n", res->headers[i].name.ptr , res->headers[i].value.ptr);
         dbuff_append(write_buffer, tmp, a);
     }
@@ -103,14 +103,10 @@ size_t http_response_serializer(http_response* res, dbuffer *write_buffer){
     a = sprintf(tmp, "\r\n");
     dbuff_append(write_buffer, tmp, a);
 
-    // a = sprintf(tmp, "%s", res->body.ptr);
-    // dbuff_append(write_buffer, tmp, a);
-
-    if (res->body.len > 0) {
-        dbuff_append(write_buffer, res->body.ptr, res->body.len);
+    if (res->con_len> 0) {
+        dbuff_append(write_buffer, res->body.ptr, res->con_len);
     }
 
-    log_message(LOG_LEVEL_INFO, "%.*s", write_buffer->len, write_buffer->data);
     return write_buffer->len;
 }
 
@@ -123,6 +119,7 @@ void http_response_reset(http_response *res){
 
     res->body.ptr = NULL;
     res->body.len = 0;
+    res->con_len = 0;
 
     res->reason.ptr = NULL;
     res->reason.len = 0;

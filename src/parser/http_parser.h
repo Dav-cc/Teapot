@@ -13,7 +13,7 @@ typedef enum {
 }http_parser_state;
 
 typedef enum {
-    ERR_INVALID_REQ_LINE = 10,
+    ERR_INVALID_REQUEST_LINE = 10,
     ERR_INVALID_HEADER_CONTENT,
     ERR_INVALLID_CONTENT_LENGTH,
     ERR_INVALID_HEADER_COUNT,
@@ -80,8 +80,17 @@ http_parser_error http_parser_headers(http_request* req, dbuffer* read_buf);
 http_parser_error http_parser_body(http_request* req, dbuffer* read_buf);
 http_parser_error http_parser_handle_Get(http_request* req, dbuffer* read_buf);
 
+
+ssize_t  convert_con_len(http_header* h);
+ssize_t  convert_length(char* value, size_t len);
+
 void http_request_destroy(http_request* req);
 void http_parser_reset(http_request* req);
 
 int slice_eq_string(http_slice* slice, char* string);
+char* find_slice(char* src, char* dest, size_t dest_size, size_t len);
+http_header* header_lookup(http_header* headers, char* name, size_t headers_count);
+ssize_t slice_to_ul(http_header* con_len);
+int has_duplicate_content_length(http_request *req);
+
 #endif

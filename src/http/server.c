@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include "server.h"
 #include "../core/event.h"
 #include "../parser/http_parser.h"

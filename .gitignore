@@ -2,7 +2,6 @@ project.md
 server
 .zed
 .vscode/
-test/
 doc/    # it well be ignored untill the docs getting ready
 AGENTS.md 
 public/static/doc/teapot-large-test.html

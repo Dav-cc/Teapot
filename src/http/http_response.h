@@ -26,7 +26,7 @@ typedef struct {
     void* file_stat;
 }http_response;
 
-void http_response_set_reason(http_response* res,status code);
+void http_response_set_reason(http_response* res);
 void http_response_add_header(http_response* res, const char* name , const char* value);
 void http_response_set_body(http_response* res, const char* body);
 void http_response_set_status(http_response* res,status code);

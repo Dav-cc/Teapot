@@ -33,13 +33,15 @@ router* find_router(http_request* req){
               continue;
             if(memcmp(req->path.ptr, routers[i].path, prefix_len) != 0)
                 continue;
-          }
+            if (req->path.len > prefix_len && req->path.ptr[prefix_len] != '/')
+              continue;
+        }
         return &routers[i];
     }
         return NULL;
 }
 
-http_response* unknown_path_handler(http_request* req){
+http_response* unknown_path_handler(){
     http_response* res = http_response_create();
     if(!res){
         return NULL;
@@ -47,18 +49,16 @@ http_response* unknown_path_handler(http_request* req){
 
     char* server_name = "Teapot-v0.0.1";
     const char *body = "<html><h1>Not implemented </h1></html>";
-    size_t body_len = strlen(body);
-    res->con_len = body_len;
  
     http_response_set_status(res, ST_NOT_IMPLEMENTED);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", server_name);
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);
     return res;
 }
 
-http_response* root_handler(http_request* req){
+http_response* root_handler(){
     http_response* res = http_response_create();
     if(!res){
         return NULL;
@@ -66,11 +66,9 @@ http_response* root_handler(http_request* req){
 
     char* server_name = "Teapot-v0.0.1";
     const char *body = "Hello From TEAPOT";
-    size_t body_len = strlen(body);
-    res->con_len = body_len;
  
     http_response_set_status(res, ST_OK);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", server_name);
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);
@@ -112,7 +110,7 @@ http_response* static_handler(http_request* req){
 
 
     http_response_set_status(res, ST_OK);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_add_header(res, "Content-Type", st->mime_type);
@@ -123,11 +121,9 @@ http_response* static_handler(http_request* req){
 
 err_404:
     err_body = "NO such file or dir";
-    size_t b_len = strlen(err_body);
-    res->con_len = b_len;
 
     http_response_set_status(res, ST_NOT_FOUND);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,err_body);
@@ -135,10 +131,8 @@ err_404:
 
 err_500:
     err_body = "Server Error";
-    size_t body_len = strlen(err_body);
-    res->con_len = body_len;
     http_response_set_status(res, ST_INTERNAL_SERVER_ERROR);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,err_body);
@@ -146,16 +140,14 @@ err_500:
     return res;
 }
 
-http_response* error_handler(http_request* req){
+http_response* error_handler(){
     http_response* res = http_response_create();
     if(!res){return NULL;}
 
     const char *body = "Internal Server Error";
-    size_t body_len = strlen(body);
-    res->con_len = body_len;
 
     http_response_set_status(res, ST_INTERNAL_SERVER_ERROR);
-    http_response_set_reason(res, res->code);
+    http_response_set_reason(res);
     http_response_add_header(res, "Server", "Teapot-v0.0.1");
     http_response_add_header(res, "Connection", "keep-alive");
     http_response_set_body(res,body);
