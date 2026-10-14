@@ -8,6 +8,7 @@
 #include <string.h>
 
 mime_type_table mime_table[] ={
+        {".txt", "text/plain"},
         {".html", "text/html"},
         {".png", "image/png"},
         {".jpg", "image/jpg"},
@@ -130,7 +131,6 @@ file_state* find_mime_type(file_state* fs,const char* path){
             return fs;
         }
     }
-    // fs->mime_type = "application/octet-stream";
     return fs;
 }
 
