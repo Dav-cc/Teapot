@@ -41,6 +41,7 @@ char *path_verifyer(http_request * req) {
     if (!filepath) {
     log_message(LOG_LEVEL_ERROR, "FAILED to init memory");
     free(path_stack);
+      free(filepath);
     return NULL;
     }
 
@@ -53,6 +54,7 @@ char *path_verifyer(http_request * req) {
 
     if (path_counter >= 16) {
       free(path_stack);
+      free(filepath);
       return NULL;
     }
 
@@ -80,6 +82,7 @@ char *path_verifyer(http_request * req) {
 
       if (top == 0) {
         free(path_stack);
+      free(filepath);
         return NULL;
       }
 
@@ -122,12 +125,16 @@ char *path_verifyer(http_request * req) {
     }
 
     filepath[offset] = '\0';
+    free(path_stack);
     return filepath;
 }
 
 file_state* get_file_state(int filefd){
     struct stat st;
     file_state *fst = calloc(1, sizeof(file_state));
+    if(!fst){
+        return NULL;
+    }
     int res = fstat(filefd, &st);
     if(res == -1){
         log_message(LOG_LEVEL_ERROR, "Error in function stat");

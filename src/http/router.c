@@ -81,7 +81,7 @@ http_response* static_handler(http_request* req){
     http_response* res = http_response_create();
     if(!res){return NULL;}
 
-    char* ver_path = path_verifyer(req);
+    char *ver_path = path_verifyer(req);
 
     int filefd = open(ver_path, O_RDONLY);
     if(filefd == -1){
@@ -108,6 +108,7 @@ http_response* static_handler(http_request* req){
 
     res->con_len = st->file_size;
 
+    res->file_stat = st;
 
     http_response_set_status(res, ST_OK);
     http_response_set_reason(res);
@@ -116,7 +117,6 @@ http_response* static_handler(http_request* req){
     http_response_add_header(res, "Content-Type", st->mime_type);
 
 
-    reset_file_stat(st);
     return res;
 
 err_404:
@@ -157,5 +157,5 @@ http_response* error_handler(){
 void reset_file_stat(file_state* fs){
     free((void*)fs->file_path);
     fs->file_size = 0;
-    fs->write_buf->offset = 0;
+    free(fs);
 }

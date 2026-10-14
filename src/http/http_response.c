@@ -1,6 +1,8 @@
 #include "http_response.h"
 #include "../core/dbuff.h"
+#include "../http/router.h"
 #include <stddef.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,5 +138,19 @@ void http_response_reset(http_response *res){
 }
 
 void http_response_destroy(http_response* res){
+    if (res == NULL)
+        return;
+
+    if (res->file_stat != NULL) {
+        file_state* fs = res->file_stat;
+
+        if (fs->write_buf != NULL)
+            dbuff_destroy(fs->write_buf);
+        if (fs->file_fd >= 0)
+            close(fs->file_fd);
+
+        free((void*)fs->file_path);
+        free(fs);
+    }
     free(res);
 }

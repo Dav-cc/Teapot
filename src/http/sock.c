@@ -188,6 +188,7 @@ handle_500:
       connection_destroy(conn);
       return 0;
     }
+    http_response_destroy(res);
     eventloop_mod_event(loop, &conn->filev, EV_WRITABLE | EV_ET);
     return 0;
 }
