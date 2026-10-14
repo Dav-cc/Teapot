@@ -26,6 +26,7 @@ char *path_verifyer(http_request * req) {
     size_t path_counter = 0;
     size_t top = 0;
     size_t offset = 0;
+    size_t needed = 0;
 
     const char *root = "./public";
     size_t root_len = strlen(root);
@@ -39,6 +40,7 @@ char *path_verifyer(http_request * req) {
     filepath = calloc(1, 128);
     if (!filepath) {
     log_message(LOG_LEVEL_ERROR, "FAILED to init memory");
+    free(path_stack);
     return NULL;
     }
 
@@ -88,6 +90,26 @@ char *path_verifyer(http_request * req) {
     path_stack[top] = current;
     top++;
     }
+
+    needed = root_len + 1;
+
+    for (size_t i = 0; i < top; i++) {
+      if (path_stack[i].len > SIZE_MAX - needed - 1) {
+        free(path_stack);
+        free(filepath);
+        return NULL;
+      }
+      needed += path_stack[i].len + 1;
+    }
+
+    char *new_filepath = realloc(filepath, needed);
+    if (!new_filepath) {
+      free(path_stack);
+      free(filepath);
+      return NULL;
+    }
+
+    filepath = new_filepath;
 
     memcpy(filepath + offset, root, root_len);
     offset += root_len;

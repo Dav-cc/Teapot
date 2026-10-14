@@ -90,12 +90,19 @@ int write_handler(EventLoop *loop, FileEvent *fe) {
             }
             conn->state = CONN_READING;
 
-            http_response_reset((http_response*)conn->http_response);
-            dbuff_reset(conn->read_buff);
-            dbuff_reset(conn->write_buff);
+            // http_response_reset((http_response*)conn->http_response);
+            // dbuff_reset(conn->read_buff);
+            dbuff_reset(conn->write_buff); // write buffer fully writed now we can saftly fulsh buffer
+
+            dbuff_compact(conn->read_buff);
             http_parser_reset(conn->request);
 
-            eventloop_mod_event(loop, &conn->filev, EV_READABLE | EV_ET);
+            if (conn->read_buff->len > conn->read_buff->offset) {
+              return read_handler(loop,fe); // it means we have data for parse
+            }
+
+            conn->state = CONN_READING;
+            eventloop_mod_event(loop, &conn->filev, EV_READABLE);
             return 0;
         }
         case IO_AGAIN:
@@ -141,10 +148,10 @@ goto handle_500;
             return 0;
     }
     router* r = find_router(conn->request);
+
     if(r == NULL){
         rs = unknown_path_handler();
-        conn->http_response = rs;
-        if(conn->http_response == NULL)
+        if(rs == NULL)
             goto handle_500;
         size_t x = http_response_serializer(rs, conn->write_buff);
         if (x == 0) {
@@ -157,21 +164,15 @@ goto handle_500;
         conn->state = CONN_WRITING;
         eventloop_mod_event(loop, &conn->filev, EV_WRITABLE | EV_ET);
         return 0;
-        // eventloop_del_event(loop, &conn->filev);
-        // connection_destroy(conn);
-        // return 0;
     }
     http_response *res = r->rout_handler(conn->request);
-    conn->http_response = res;
 
     size_t w = http_response_serializer(res, conn->write_buff);
     if (w == 0) {
       log_message(LOG_LEVEL_ERROR, "failed to serianlize on fd = %d", conn->fd);
       goto handle_500;
-      // eventloop_del_event(loop, &conn->filev);
-      // connection_destroy(conn);
-      // return 0;
     }
+    http_response_destroy(res);
 
     conn->state = CONN_WRITING;
 
@@ -179,8 +180,7 @@ goto handle_500;
 
     return 0;
 handle_500:
-    rs = error_handler(conn->request);
-    conn->http_response = rs;
+    rs = error_handler();
     size_t x = http_response_serializer(rs, conn->write_buff);
     if(x == 0){
       log_message(LOG_LEVEL_ERROR, "Server Error Closing Connection", conn->fd);

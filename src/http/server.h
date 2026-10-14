@@ -29,7 +29,6 @@ struct Connection{
     FileEvent filev;
 
     http_request* request;
-    void* http_response;
 };
 
 #endif

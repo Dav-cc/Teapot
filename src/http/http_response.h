@@ -32,5 +32,6 @@ void http_response_set_body(http_response* res, const char* body);
 void http_response_set_status(http_response* res,status code);
 size_t http_response_serializer(http_response* res, dbuffer* write_buffer);
 http_response* http_response_create();
+void http_response_destroy(http_response* res);
 void http_response_reset(http_response* res);
 #endif

@@ -134,3 +134,7 @@ void http_response_reset(http_response *res){
     res->headers_count = 0;
     free(res);
 }
+
+void http_response_destroy(http_response* res){
+    free(res);
+}

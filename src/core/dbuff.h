@@ -19,6 +19,7 @@ typedef enum{
 
 dbuffer* dbuff_create(size_t cap);
 void dbuff_destroy(dbuffer* buf);
+void dbuff_compact(dbuffer* buf);
 io_err dbuff_read(dbuffer* buf, int fd);
 io_err dbuff_write(dbuffer* buf ,int fd);
 io_err dbuff_append(dbuffer* buf, char* ch, ssize_t len);
