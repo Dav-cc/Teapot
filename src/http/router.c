@@ -33,7 +33,9 @@ router* find_router(http_request* req){
               continue;
             if(memcmp(req->path.ptr, routers[i].path, prefix_len) != 0)
                 continue;
-          }
+            if (req->path.len > prefix_len && req->path.ptr[prefix_len] != '/')
+              continue;
+        }
         return &routers[i];
     }
         return NULL;
