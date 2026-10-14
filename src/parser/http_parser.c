@@ -77,8 +77,7 @@ ssize_t slice_to_ul(http_header* con_len){
     return u_len;
 }
 
-ssize_t convert_con_len(http_header *h)
-{
+ssize_t convert_con_len(http_header *h){
     if (h == NULL)
         return -1;
 
