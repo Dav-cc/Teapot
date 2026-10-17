@@ -4,11 +4,12 @@
 #include "../core/event.h"
 #include "../parser/http_parser.h"
 #include "../core/dbuff.h"
+#include "../config.h"
 
 typedef struct Connection Connection;
 
 int accept_handler(EventLoop* loop, FileEvent* fe);
-int init_tcp_server(int port);
+int init_tcp_server(server_config*sc);
 Connection* connection_creat(int fd, int is_listener, event_callback readd, event_callback writee);
 int connection_destroy(Connection* conn);
 

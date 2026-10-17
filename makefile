@@ -13,6 +13,7 @@ SRC = \
 	src/http/router.c\
 	src/http/http_response.c\
 	src/static/static.c\
+	src/config.c\
 
 
 OBJ = $(SRC:.c=.o)

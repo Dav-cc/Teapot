@@ -62,8 +62,8 @@ int connection_destroy(Connection* conn){
     return 0;
 }
 
-int init_tcp_server(int port){
-    int listenfd= init_listen_socket(port);
+int init_tcp_server(server_config* sc){
+    int listenfd= init_listen_socket(sc);
     if(listenfd == -1){
         log_message(LOG_LEVEL_ERROR, "error in running server");
         return -1;

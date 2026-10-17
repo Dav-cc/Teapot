@@ -1,9 +1,9 @@
 #include "log.h"
 
-LLevel log_level = LOG_LEVEL_DEBUG;
+LLevel g_log_level = LOG_LEVEL_DEBUG;
 
 void log_message(LLevel level, char* format, ...) {
-    if (log_level > level) {
+    if (g_log_level > level) {
         return;
     }
 

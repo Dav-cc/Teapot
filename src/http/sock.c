@@ -193,8 +193,9 @@ handle_500:
     return 0;
 }
 
-int init_listen_socket(int port) {
+int init_listen_socket(server_config* sc) {
     struct sockaddr_in addr = {0};
+    G_config = sc;
 
     // creat tcp ipv4 socket
     int sockfd = socket(AF_INET, SOCK_STREAM|SOCK_NONBLOCK|SOCK_CLOEXEC, 0);
@@ -206,8 +207,12 @@ int init_listen_socket(int port) {
     sock_set_nodelay(sockfd);
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(sc->port);
+
+    if (inet_pton(AF_INET, sc->host, &addr.sin_addr) != 1) {
+        log_message(LOG_LEVEL_ERROR, "Error Invalid IPV4");
+        return -1;
+    }
 
     int res = bind(sockfd, (struct sockaddr*)&addr, sizeof(addr));
     if(res < 0){
@@ -217,7 +222,7 @@ int init_listen_socket(int port) {
         return -1;
     }
 
-    int listen_res = listen(sockfd, SOMAXCONN);
+    int listen_res = listen(sockfd, sc->backlog);
     if(listen_res < 0){
         log_message(LOG_LEVEL_ERROR, "listen() failed : %s", strerror(errno));
         close(sockfd);
@@ -225,7 +230,7 @@ int init_listen_socket(int port) {
         return -1;
     }
     sock_set_nonblocking(sockfd);
-    log_message(LOG_LEVEL_INFO, "Listening on port %d", port);
+    log_message(LOG_LEVEL_INFO, "Listening on port %d", sc->port);
     return sockfd;
 }
 

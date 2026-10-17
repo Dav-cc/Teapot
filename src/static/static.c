@@ -2,6 +2,7 @@
 #include "../parser/http_parser.h"
 #include "../http/router.h"
 #include "../core/log.h"
+#include "../http/sock.h"
 #include "../core/dbuff.h"
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -28,7 +29,7 @@ char *path_verifyer(http_request * req) {
     size_t offset = 0;
     size_t needed = 0;
 
-    const char *root = "./public";
+    const char *root = G_config->doc_root;
     size_t root_len = strlen(root);
 
     http_slice *path_stack = calloc(16, sizeof(*path_stack));
@@ -82,7 +83,7 @@ char *path_verifyer(http_request * req) {
 
       if (top == 0) {
         free(path_stack);
-      free(filepath);
+        free(filepath);
         return NULL;
       }
 

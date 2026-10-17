@@ -12,5 +12,8 @@ typedef enum {
     LOG_LEVEL_ERROR
 } LLevel;
 
+
+extern LLevel g_log_level;
+
 void log_message(LLevel level, char* format, ...);
 #endif //__LOG_H_

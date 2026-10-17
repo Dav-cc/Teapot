@@ -1,7 +1,6 @@
 #ifndef TEAPOT_CONF_H
 #define TEAPOT_CONF_H
 
-#include <stdbool.h>
 #include "core/log.h"
 
 typedef struct {
@@ -10,8 +9,6 @@ typedef struct {
     int backlog; 
 
     char* doc_root;
-
-    bool keep_alive;
 
     LLevel log_level;
 } server_config;

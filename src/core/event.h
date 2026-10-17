@@ -1,5 +1,7 @@
 #ifndef TEVENTLOOP_H
 #define TEVENTLOOP_H
+
+#include "../config.h"
 #include <stdint.h>
 #include <sys/epoll.h>
 

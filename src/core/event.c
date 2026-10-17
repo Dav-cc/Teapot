@@ -1,4 +1,5 @@
 #include "log.h"
+#include "../config.h"
 #include "event.h"
 #include <errno.h>
 #include <stdlib.h>
