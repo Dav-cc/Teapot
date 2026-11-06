@@ -7,6 +7,7 @@
 
 typedef enum{
     ST_OK = 200,
+    ST_CREATED = 201,
     ST_BAD_REQUEST = 400,
     ST_NOT_FOUND = 404,
     ST_TEAPOT = 418,

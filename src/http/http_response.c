@@ -23,6 +23,9 @@ void http_response_set_status(http_response* res,status code){
         case ST_OK:
             res->code = 200;
             break;
+        case ST_CREATED:
+            res->code = 201;
+            break;
         case ST_TEAPOT:
             res->code = 418;
             break;
@@ -50,6 +53,10 @@ void http_response_set_reason(http_response* res){
             break;
         case ST_OK:
             res->reason.ptr = "OK";
+            res->reason.len = strlen(res->reason.ptr);
+            break;
+        case ST_CREATED:
+            res->reason.ptr = "Created";
             res->reason.len = strlen(res->reason.ptr);
             break;
         case ST_NOT_FOUND:
@@ -149,7 +156,8 @@ void http_response_destroy(http_response* res){
         if (fs->file_fd >= 0)
             close(fs->file_fd);
 
-        free((void*)fs->file_path);
+        if(fs->file_path)
+            free((void*)fs->file_path);
         free(fs);
     }
     free(res);
